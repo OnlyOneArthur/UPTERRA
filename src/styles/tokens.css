@@ -1,0 +1,7 @@
+:root {
+  --color-primary: #238b45;
+  --color-primary-hover: #1a6e35;
+  --color-primary-active: #145728;
+  --color-primary-light: #e8f5ed;
+  --font-body: "Poppins", sans-serif;
+}
