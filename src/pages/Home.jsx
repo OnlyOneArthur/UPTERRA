@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Bell, Camera, ChevronRight, ScanLine } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
-import loginUpterra from "../assets/logo/logo_upterra.svg";
+import loginUpterra from "../assets/images/profile.svg";
 
 const categories = ["Organik", "Anorganik", "Limbah Elektronik"];
 
@@ -85,7 +85,7 @@ export default function Home() {
       <div className="mx-auto max-w-md px-5 pt-6 pb-28">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#1d1d1d] bg-[#8bd39f] shadow-sm">
+            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[#8bd39f] shadow-sm">
               <img src={loginUpterra} alt="UPTERRA" className="h-full w-full" />
             </div>
 
