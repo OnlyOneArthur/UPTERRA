@@ -72,13 +72,11 @@ export default function Onboarding() {
       </div>
 
       <div className="flex-1 flex items-center justify-center px-6 pt-2 pb-4">
-        <div className="w-full max-w-sm aspect-square rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-          <img
-            src={slide.image}
-            alt={`Onboarding ${current + 1}`}
-            className="w-full h-full object-contain p-3"
-          />
-        </div>
+        <img
+          src={slide.image}
+          alt={`Onboarding ${current + 1}`}
+          className="w-full h-full object-contain p-3"
+        />
       </div>
 
       <div className="px-6 pt-2 pb-2 text-center">
