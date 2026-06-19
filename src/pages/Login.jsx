@@ -43,9 +43,8 @@ export default function Login() {
             <img
               src={trashCan}
               alt="Trash can"
-              className="mb-2 h-16 w-16 object-contain"
+              className="mb-3 h-25 w-25 object-contain"
             />
-            <h2 className="text-4xl font-bold text-[#238B45]">Login</h2>
           </div>
 
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
@@ -63,9 +62,6 @@ export default function Login() {
                 placeholder="Password"
                 className="w-full rounded-full bg-white px-5 py-3 text-sm shadow-[0_4px_12px_rgba(0,0,0,0.08)] outline-none placeholder:text-gray-400"
               />
-              <span className="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400">
-                👁️
-              </span>
             </div>
 
             <div className="flex items-center justify-between px-1 text-[11px]">
