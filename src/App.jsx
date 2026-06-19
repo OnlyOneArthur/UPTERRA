@@ -9,21 +9,27 @@ import MarketDetail from "./pages/MarketDetail";
 import Cart from "./pages/Cart";
 import Pesanan from "./pages/Pesanan";
 import ProductChat from "./pages/ProductChat";
+import PageWrapper from "./components/layout/PageWrapper";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Auth & onboarding — no BottomNav */}
         <Route path="/" element={<SplashScreen />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/market" element={<Market />} />
-        <Route path="/market/:id" element={<MarketDetail />} />
-        <Route path="/chat/:id" element={<ProductChat />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/pesanan" element={<Pesanan />} />
+
+        {/* Main app — BottomNav always visible */}
+        <Route element={<PageWrapper />}>
+          <Route path="/home" element={<Home />} />
+          <Route path="/market" element={<Market />} />
+          <Route path="/market/:id" element={<MarketDetail />} />
+          <Route path="/chat/:id" element={<ProductChat />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/pesanan" element={<Pesanan />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
