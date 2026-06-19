@@ -55,7 +55,7 @@ export const products = [
     title: "RAM Laptop 8GB DDR4 second pull-out tested",
     price: 280000,
     image:
-      "https://images.unsplash.com/photo-1562976540-1502c2145896?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=400&q=80",
     rating: 4.3,
     sold: 15,
     category: "komponen PC",
@@ -213,7 +213,7 @@ export const products = [
     title: "Pot kerajinan dari botol kaca daur ulang",
     price: 45000,
     image:
-      "https://images.unsplash.com/photo-1585813507835-9f12abaafc00?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=400&q=80",
     rating: 4.6,
     sold: 63,
     category: "Produk Populer",
@@ -230,7 +230,7 @@ export const products = [
     title: "Lampu hias dari botol kaca dan kayu bekas",
     price: 135000,
     image:
-      "https://images.unsplash.com/photo-1513506003901-1e6a35359a28?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80",
     rating: 4.8,
     sold: 37,
     category: "Produk Populer",
