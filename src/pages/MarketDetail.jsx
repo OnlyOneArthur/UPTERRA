@@ -210,12 +210,15 @@ export default function MarketDetail() {
             <span className="text-[12px] text-[#555]">akan sampai pada 3 - 5 Juni</span>
           </div>
 
-          {/* Toko & Obrolan */}
+          {/* Toko & Obrolan — Obrolan now navigates to chat */}
           <div className="mt-5 flex items-center gap-4 border-t border-[#f2f2f2] pt-4">
             <button className="flex items-center gap-1.5 text-[12px] text-[#555]">
               <span className="text-[16px]">🏪</span> Toko
             </button>
-            <button className="flex items-center gap-1.5 text-[12px] text-[#555]">
+            <button
+              onClick={() => navigate(`/chat/${product.id}`)}
+              className="flex items-center gap-1.5 text-[12px] text-[#3da85e] font-medium active:opacity-70"
+            >
               <MessageSquare size={15} /> Obrolan
             </button>
           </div>
@@ -317,7 +320,7 @@ export default function MarketDetail() {
               </div>
             </div>
 
-            {/* Dual CTA Buttons — matches image-1.jpg */}
+            {/* Dual CTA Buttons */}
             <div className="flex items-center gap-3">
               <button
                 onClick={handleAddToCart}
