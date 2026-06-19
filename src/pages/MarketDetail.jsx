@@ -31,7 +31,6 @@ export default function MarketDetail() {
   );
   const [quantity, setQuantity] = useState(1);
   const [showSheet, setShowSheet] = useState(false);
-  const [sheetMode, setSheetMode] = useState("cart"); // 'cart' | 'buy'
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -48,24 +47,24 @@ export default function MarketDetail() {
     setTimeout(() => setToast(null), 2000);
   };
 
-  const openSheet = (mode) => {
+  const openSheet = () => {
     setQuantity(1);
-    setSheetMode(mode);
     setShowSheet(true);
   };
 
-  const handleConfirm = () => {
+  const handleAddToCart = () => {
+    addItem(product, selectedVariant, quantity);
     setShowSheet(false);
-    if (sheetMode === "cart") {
-      addItem(product, selectedVariant, quantity);
-      showToast("Produk ditambahkan ke keranjang!");
-    } else {
-      addOrder(
-        [{ ...product, variantLabel: selectedVariant.label, quantity }],
-        product.price * quantity
-      );
-      navigate("/pesanan");
-    }
+    showToast("Produk ditambahkan ke keranjang!");
+  };
+
+  const handleBuyNow = () => {
+    addOrder(
+      [{ ...product, variantLabel: selectedVariant.label, quantity }],
+      product.price * quantity
+    );
+    setShowSheet(false);
+    navigate("/pesanan");
   };
 
   return (
@@ -172,10 +171,10 @@ export default function MarketDetail() {
             </div>
           )}
 
-          {/* Variants */}
+          {/* Variants Section */}
           <div className="mt-4">
             <button
-              onClick={() => openSheet("cart")}
+              onClick={openSheet}
               className="flex w-full items-center justify-between rounded-[14px] border border-[#eee] px-4 py-3"
             >
               <span className="text-[13px] font-medium text-[#444]">
@@ -226,14 +225,14 @@ export default function MarketDetail() {
         <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 bg-white px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-30">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => openSheet("cart")}
+              onClick={openSheet}
               className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#3da85e] px-4 py-3 text-[13px] font-semibold text-[#3da85e] active:bg-[#f0faf3] transition-colors"
             >
               <ShoppingCart size={16} />
               ke keranjang
             </button>
             <button
-              onClick={() => openSheet("buy")}
+              onClick={openSheet}
               className="flex flex-1 items-center justify-center rounded-full bg-[#3da85e] px-4 py-3 text-[13px] font-semibold text-white active:bg-[#2f9050] transition-colors"
             >
               Beli Sekarang
@@ -250,10 +249,11 @@ export default function MarketDetail() {
             onClick={() => setShowSheet(false)}
           />
           <div className="relative mx-auto w-full max-w-md rounded-t-[24px] bg-white px-5 pt-5 pb-8 shadow-xl">
+            {/* Drag Handle */}
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[#e0e0e0]" />
 
-            {/* Product preview in sheet */}
-            <div className="flex items-center gap-3 rounded-[14px] bg-[#f8f8f8] p-3 mb-4">
+            {/* Product Preview */}
+            <div className="flex items-center gap-3 rounded-[14px] bg-[#f8f8f8] p-3 mb-5">
               <img
                 src={product.image}
                 alt={product.title}
@@ -272,8 +272,8 @@ export default function MarketDetail() {
             </div>
 
             {/* Variant Picker */}
-            <p className="text-[12px] font-semibold text-[#2d2d2d]">Pilih Varian</p>
-            <div className="mt-2 flex gap-2">
+            <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">Pilih Varian</p>
+            <div className="flex gap-2 mb-5">
               {product.variants.map((v) => (
                 <button
                   key={v.label}
@@ -294,8 +294,8 @@ export default function MarketDetail() {
             </div>
 
             {/* Quantity */}
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-[#2d2d2d]">Kuantitas</p>
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[13px] font-semibold text-[#2d2d2d]">Kuantitas</p>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -317,13 +317,22 @@ export default function MarketDetail() {
               </div>
             </div>
 
-            {/* Confirm Button */}
-            <button
-              onClick={handleConfirm}
-              className="mt-6 w-full rounded-full bg-[#3da85e] py-3.5 text-[14px] font-bold text-white shadow-[0_4px_14px_rgba(61,168,94,0.3)] active:bg-[#2f9050] transition-colors"
-            >
-              {sheetMode === "buy" ? "Beli Sekarang" : "Masukkan ke Keranjang"}
-            </button>
+            {/* Dual CTA Buttons — matches image-1.jpg */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleAddToCart}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#3da85e] px-4 py-3 text-[13px] font-semibold text-[#3da85e] active:bg-[#f0faf3] transition-colors"
+              >
+                <ShoppingCart size={15} />
+                ke keranjang
+              </button>
+              <button
+                onClick={handleBuyNow}
+                className="flex flex-1 items-center justify-center rounded-full bg-[#3da85e] px-4 py-3 text-[13px] font-semibold text-white active:bg-[#2f9050] transition-colors"
+              >
+                Beli Sekarang
+              </button>
+            </div>
           </div>
         </div>
       )}
