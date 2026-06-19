@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useCartStore } from "../store/cartStore";
 
+import tasDaurUlang from "../assets/images/tas-daur-ulang.svg";
+
 const quickActions = [
   { label: "Pesanan", icon: ClipboardList, path: "/pesanan" },
   { label: "Percakapan", icon: MessageSquare, path: null },
@@ -107,7 +109,7 @@ export const products = [
     id: 5,
     title: "Tas kerajinan daur ulang plastik dan kulit serbaguna",
     price: 450000,
-    image: "../assets/images/tas-daur-ulang.svg",
+    image: tasDaurUlang,
     rating: 4.7,
     sold: 21,
     category: "Tas",
