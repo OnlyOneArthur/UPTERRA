@@ -1,59 +1,35 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingCart, Trash2 } from "lucide-react";
-import { products } from "./Market";
+import { useCartStore } from "../store/cartStore";
 
 function formatPrice(price) {
   return "Rp" + price.toLocaleString("id-ID");
 }
 
-// Simulated cart state — in a real app this would come from global store/context
-const initialCartItems = [
-  { productId: 2, variant: "coklat plastik", quantity: 1 },
-];
-
 export default function Cart() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState(initialCartItems);
+
+  const items = useCartStore((s) => s.items);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const totalPrice = useCartStore((s) => s.totalPrice());
+
   const [showSheet, setShowSheet] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   const [sheetQty, setSheetQty] = useState(1);
 
-  const getProduct = (id) => products.find((p) => p.id === id);
-
-  const updateQty = (index, delta) => {
-    setCartItems((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
-  };
-
-  const removeItem = (index) => {
-    setCartItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const openSheet = (index) => {
     setActiveItem(index);
-    setSheetQty(cartItems[index].quantity);
+    setSheetQty(items[index].quantity);
     setShowSheet(true);
   };
 
   const applySheet = () => {
-    setCartItems((prev) =>
-      prev.map((item, i) =>
-        i === activeItem ? { ...item, quantity: sheetQty } : item
-      )
-    );
+    const item = items[activeItem];
+    if (item) updateQuantity(item.id, item.variantLabel, sheetQty);
     setShowSheet(false);
   };
-
-  const total = cartItems.reduce((sum, item) => {
-    const p = getProduct(item.productId);
-    return sum + (p ? p.price * item.quantity : 0);
-  }, 0);
 
   return (
     <div className="relative min-h-screen bg-[#f6f6f4]">
@@ -74,7 +50,7 @@ export default function Cart() {
 
         {/* Cart Items */}
         <div className="mt-3 flex flex-col gap-3 px-5">
-          {cartItems.length === 0 ? (
+          {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <ShoppingCart size={48} className="text-[#ccc] mb-4" />
               <p className="text-[14px] font-semibold text-[#888]">Keranjang kamu kosong</p>
@@ -87,93 +63,89 @@ export default function Cart() {
               </button>
             </div>
           ) : (
-            cartItems.map((item, index) => {
-              const product = getProduct(item.productId);
-              if (!product) return null;
-              return (
-                <div
-                  key={index}
-                  className="rounded-[18px] bg-white p-4 shadow-[0_4px_14px_rgba(0,0,0,0.06)]"
-                >
-                  {/* Shop label */}
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-[#3da85e]">
-                      🏪 {product.title.split(" ").slice(0, 3).join(" ")}
-                    </span>
-                    <button
-                      onClick={() => removeItem(index)}
-                      aria-label="Hapus"
-                      className="text-[#ccc] hover:text-[#e03535]"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+            items.map((item, index) => (
+              <div
+                key={`${item.id}-${item.variantLabel}`}
+                className="rounded-[18px] bg-white p-4 shadow-[0_4px_14px_rgba(0,0,0,0.06)]"
+              >
+                {/* Shop label */}
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-[#3da85e]">
+                    🏪 {item.title.split(" ").slice(0, 3).join(" ")}
+                  </span>
+                  <button
+                    onClick={() => removeItem(item.id, item.variantLabel)}
+                    aria-label="Hapus"
+                    className="text-[#ccc] hover:text-[#e03535]"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
 
-                  {/* Item row */}
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      className="h-[72px] w-[72px] rounded-[12px] object-cover flex-shrink-0"
-                      width="72"
-                      height="72"
-                      loading="lazy"
-                    />
-                    <div className="flex-1">
-                      <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">
-                        {product.title}
-                      </p>
-                      <p className="mt-1 text-[11px] text-[#aaa]">{item.variant}</p>
-                      <p className="mt-1 text-[13px] font-bold text-[#e03535]">
-                        {formatPrice(product.price)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Quantity row */}
-                  <div className="mt-3 flex items-center justify-between border-t border-[#f2f2f2] pt-3">
-                    <span className="text-[11px] text-[#888]">
-                      Subtotal:{" "}
-                      <span className="font-bold text-[#2d2d2d]">
-                        {formatPrice(product.price * item.quantity)}
-                      </span>
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => updateQty(index, -1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd] text-[16px] text-[#555]"
-                        aria-label="Kurang"
-                      >
-                        −
-                      </button>
-                      <span className="min-w-[16px] text-center text-[13px] font-semibold text-[#2d2d2d]">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQty(index, 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd] text-[16px] text-[#555]"
-                        aria-label="Tambah"
-                      >
-                        +
-                      </button>
-                    </div>
+                {/* Item row */}
+                <div className="flex items-start gap-3">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-[72px] w-[72px] rounded-[12px] object-cover flex-shrink-0"
+                    width="72"
+                    height="72"
+                    loading="lazy"
+                  />
+                  <div className="flex-1">
+                    <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#aaa]">{item.variantLabel}</p>
+                    <p className="mt-1 text-[13px] font-bold text-[#e03535]">
+                      {formatPrice(item.price)}
+                    </p>
                   </div>
                 </div>
-              );
-            })
+
+                {/* Quantity row */}
+                <div className="mt-3 flex items-center justify-between border-t border-[#f2f2f2] pt-3">
+                  <span className="text-[11px] text-[#888]">
+                    Subtotal:{" "}
+                    <span className="font-bold text-[#2d2d2d]">
+                      {formatPrice(item.price * item.quantity)}
+                    </span>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => updateQuantity(item.id, item.variantLabel, item.quantity - 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd] text-[16px] text-[#555]"
+                      aria-label="Kurang"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-[16px] text-center text-[13px] font-semibold text-[#2d2d2d]">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.variantLabel, item.quantity + 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[#ddd] text-[16px] text-[#555]"
+                      aria-label="Tambah"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
 
       {/* Bottom Bar */}
-      {cartItems.length > 0 && (
+      {items.length > 0 && (
         <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 bg-white px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-[12px] text-[#888]">
-              Total ({cartItems.length} item)
+              Total ({items.length} item)
             </span>
             <span className="text-[16px] font-bold text-[#e03535]">
-              {formatPrice(total)}
+              {formatPrice(totalPrice)}
             </span>
           </div>
           <button
@@ -187,8 +159,8 @@ export default function Cart() {
 
       {/* Bottom Sheet */}
       {showSheet && activeItem !== null && (() => {
-        const item = cartItems[activeItem];
-        const product = getProduct(item.productId);
+        const item = items[activeItem];
+        if (!item) return null;
         return (
           <div className="fixed inset-0 z-50 flex items-end justify-center">
             <div
@@ -209,17 +181,17 @@ export default function Cart() {
               {/* Item card */}
               <div className="flex items-center gap-3 rounded-[14px] bg-[#f8f8f8] p-3">
                 <img
-                  src={product.image}
-                  alt={product.title}
+                  src={item.image}
+                  alt={item.title}
                   className="h-14 w-14 rounded-[10px] object-cover flex-shrink-0"
                   width="56"
                   height="56"
                 />
                 <div>
                   <p className="text-[13px] font-bold text-[#e03535]">
-                    {formatPrice(product.price)}
+                    {formatPrice(item.price)}
                   </p>
-                  <p className="text-[11px] text-[#888] mt-0.5">{item.variant}</p>
+                  <p className="text-[11px] text-[#888] mt-0.5">{item.variantLabel}</p>
                 </div>
               </div>
 
