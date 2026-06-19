@@ -12,14 +12,15 @@ import {
   Settings,
 } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
+import { useCartStore } from "../store/cartStore";
 
 const quickActions = [
-  { label: "Pesanan", icon: ClipboardList },
-  { label: "Percakapan", icon: MessageSquare },
-  { label: "Alamat", icon: MapPin },
-  { label: "Riwayat", icon: RotateCcw },
-  { label: "Metode Pembayaran", icon: CreditCard },
-  { label: "Mulai Penjualan", icon: Store },
+  { label: "Pesanan", icon: ClipboardList, route: "/pesanan" },
+  { label: "Percakapan", icon: MessageSquare, route: null },
+  { label: "Alamat", icon: MapPin, route: null },
+  { label: "Riwayat", icon: RotateCcw, route: null },
+  { label: "Metode Pembayaran", icon: CreditCard, route: null },
+  { label: "Mulai Penjualan", icon: Store, route: null },
 ];
 
 const categories = ["Semua", "Produk Populer", "komponen PC", "Tas", "Sparepart"];
@@ -27,7 +28,7 @@ const categories = ["Semua", "Produk Populer", "komponen PC", "Tas", "Sparepart"
 const products = [
   {
     id: 1,
-    title: "keyboard apple mac second ...",
+    title: "keyboard apple mac second hand",
     price: 750000,
     image:
       "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80",
@@ -36,8 +37,8 @@ const products = [
   },
   {
     id: 2,
-    title: "tas kerajinan daur ulang bah...",
-    price: 100000,
+    title: "tas kerajinan daur ulang plastik dan kulit serbaguna | ...",
+    price: 450000,
     image:
       "https://images.unsplash.com/photo-1614179818511-3da2ebe7c3a0?auto=format&fit=crop&w=400&q=80",
     rating: 4.7,
@@ -70,6 +71,7 @@ function formatPrice(price) {
 export default function Market() {
   const [activeCategory, setActiveCategory] = useState("Semua");
   const navigate = useNavigate();
+  const cartCount = useCartStore((s) => s.totalCount());
 
   return (
     <div className="min-h-screen bg-[#f6f6f4]">
@@ -77,7 +79,6 @@ export default function Market() {
         {/* Header */}
         <header className="bg-white px-5 pt-6 pb-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between">
-            {/* Logo */}
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3da85e]">
                 <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -91,7 +92,6 @@ export default function Market() {
                 UPTERRA
               </span>
             </div>
-            {/* Icons */}
             <div className="flex items-center gap-3">
               <button
                 aria-label="Settings"
@@ -101,17 +101,19 @@ export default function Market() {
               </button>
               <button
                 aria-label="Keranjang"
+                onClick={() => navigate("/cart")}
                 className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]"
               >
                 <ShoppingBag size={17} className="text-[#666]" />
-                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
-                  6
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
+                    {cartCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
 
-          {/* Search Bar */}
           <div className="mt-4 flex items-center gap-3 rounded-full bg-[#f4f4f4] px-4 py-3">
             <Search size={15} className="text-[#bbb]" />
             <span className="flex-1 text-[13px] text-[#c0c0c0]">
@@ -123,9 +125,10 @@ export default function Market() {
         {/* Quick Actions */}
         <div className="bg-white px-5 pb-5 pt-4">
           <div className="grid grid-cols-6 gap-1">
-            {quickActions.map(({ label, icon: Icon }) => (
+            {quickActions.map(({ label, icon: Icon, route }) => (
               <button
                 key={label}
+                onClick={() => route && navigate(route)}
                 className="flex flex-col items-center gap-1.5"
               >
                 <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-[#f2f2f2]">

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   Share2,
   ShoppingBag,
   MoreVertical,
@@ -14,12 +13,15 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { useCartStore } from "../store/cartStore";
+import { useOrderStore } from "../store/orderStore";
 
 const productData = {
   1: {
     id: 1,
     title: "Keyboard Apple Mac Second",
-    fullTitle: "Keyboard apple mac second berkualitas | keyboard wireless | keyboard bluetooth",
+    fullTitle:
+      "Keyboard apple mac second berkualitas | keyboard wireless | keyboard bluetooth",
     price: 750000,
     image:
       "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80",
@@ -54,7 +56,8 @@ const productData = {
   3: {
     id: 3,
     title: "Kerajinan Pot Dari Botol Kaca",
-    fullTitle: "Kerajinan pot dari botol kaca daur ulang | pot bunga unik | dekorasi rumah",
+    fullTitle:
+      "Kerajinan pot dari botol kaca daur ulang | pot bunga unik | dekorasi rumah",
     price: 45000,
     image:
       "https://images.unsplash.com/photo-1585813507835-9f12abaafc00?auto=format&fit=crop&w=800&q=80",
@@ -91,29 +94,58 @@ function formatPrice(price) {
 export default function MarketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const product = productData[id] || productData[2];
+
+  // Parse id as number to correctly look up productData
+  const product = productData[Number(id)] || productData[2];
+
+  const addItem = useCartStore((s) => s.addItem);
+  const cartCount = useCartStore((s) => s.totalCount());
+  const addOrder = useOrderStore((s) => s.addOrder);
 
   const [selectedVariant, setSelectedVariant] = useState(product.variants[0]);
   const [quantity, setQuantity] = useState(1);
   const [showSheet, setShowSheet] = useState(false);
   const [sheetMode, setSheetMode] = useState("buy"); // 'buy' | 'cart'
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2000);
+  };
 
   const openSheet = (mode) => {
+    // Reset quantity each time sheet opens
+    setQuantity(1);
     setSheetMode(mode);
     setShowSheet(true);
   };
 
   const handleConfirm = () => {
     setShowSheet(false);
-    if (sheetMode === "buy") {
-      // navigate to checkout (placeholder)
+    if (sheetMode === "cart") {
+      addItem(product, selectedVariant, quantity);
+      showToast("Produk ditambahkan ke keranjang!");
+    } else {
+      // Beli Sekarang: create order immediately and go to pesanan
+      addOrder(
+        [{ ...product, variantLabel: selectedVariant.label, quantity }],
+        product.price * quantity
+      );
+      navigate("/pesanan");
     }
   };
 
   return (
     <div className="relative min-h-screen bg-[#f6f6f4]">
       <div className="mx-auto max-w-md">
+        {/* Toast */}
+        {toast && (
+          <div className="fixed top-6 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-[#2d2d2d] px-5 py-2.5 shadow-lg">
+            <span className="text-[13px] font-medium text-white">{toast}</span>
+          </div>
+        )}
+
         {/* Product Image */}
         <div className="relative">
           <img
@@ -136,19 +168,27 @@ export default function MarketDetail() {
             </button>
             <div className="flex items-center gap-2">
               <button
-                aria-label="Cari"
+                aria-label="Bagikan"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md"
               >
-                <span className="text-[12px] font-medium text-[#555] px-2">Cari produk second</span>
-              </button>
-              <button aria-label="Bagikan" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md">
                 <Share2 size={16} className="text-[#333]" />
               </button>
-              <button aria-label="Keranjang" className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md">
+              <button
+                aria-label="Keranjang"
+                onClick={() => navigate("/cart")}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md"
+              >
                 <ShoppingBag size={16} className="text-[#333]" />
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">6</span>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
+                    {cartCount}
+                  </span>
+                )}
               </button>
-              <button aria-label="Lainnya" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md">
+              <button
+                aria-label="Lainnya"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md"
+              >
                 <MoreVertical size={16} className="text-[#333]" />
               </button>
             </div>
@@ -162,23 +202,16 @@ export default function MarketDetail() {
 
         {/* Product Info Card */}
         <div className="bg-white px-5 pt-5 pb-4">
-          {/* Price */}
           <p className="text-[22px] font-bold text-[#e03535]">
             {formatPrice(product.price)}
           </p>
-
-          {/* Location */}
           <div className="mt-2 flex items-center gap-1">
             <MapPin size={13} className="text-[#aaa]" />
             <span className="text-[12px] text-[#aaa]">{product.location}</span>
           </div>
-
-          {/* Title */}
           <h1 className="mt-3 text-[15px] font-semibold leading-snug text-[#2d2d2d]">
             {product.fullTitle}
           </h1>
-
-          {/* Rating & Sold */}
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-yellow-400 text-[14px]">★</span>
@@ -196,13 +229,16 @@ export default function MarketDetail() {
             >
               <Bookmark
                 size={20}
-                className={isBookmarked ? "fill-[#3da85e] text-[#3da85e]" : "text-[#ccc]"}
+                className={
+                  isBookmarked
+                    ? "fill-[#3da85e] text-[#3da85e]"
+                    : "text-[#ccc]"
+                }
               />
             </button>
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-2 bg-[#f0f0f0]" />
 
         {/* Variants */}
@@ -230,7 +266,6 @@ export default function MarketDetail() {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-2 bg-[#f0f0f0]" />
 
         {/* Delivery */}
@@ -243,8 +278,23 @@ export default function MarketDetail() {
           </div>
         </div>
 
+        {/* Store & Chat */}
+        <div className="bg-white px-5 py-3 flex items-center gap-4">
+          <button className="flex items-center gap-1.5 text-[12px] text-[#888]">
+            <Store size={18} />
+            <span>Toko</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-[12px] text-[#888]">
+            <MessageSquare size={18} />
+            <span>obrolan</span>
+          </button>
+        </div>
+
+        {/* Bottom bar spacer */}
+        <div className="h-28" />
+
         {/* Bottom Action Bar */}
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white px-5 py-4 shadow-[0_-6px_20px_rgba(0,0,0,0.07)]">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white px-5 py-4 shadow-[0_-6px_20px_rgba(0,0,0,0.07)] z-30">
           <div className="flex gap-3">
             <button
               onClick={() => openSheet("cart")}
@@ -262,20 +312,14 @@ export default function MarketDetail() {
           </div>
         </div>
 
-        {/* Bottom bar spacer */}
-        <div className="h-24" />
-
         {/* Bottom Sheet */}
         {showSheet && (
           <>
-            {/* Overlay */}
             <div
               className="fixed inset-0 z-40 bg-black/40"
               onClick={() => setShowSheet(false)}
             />
-            {/* Sheet */}
             <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-md -translate-x-1/2 rounded-t-[28px] bg-white px-5 pt-5 pb-8 shadow-[0_-8px_32px_rgba(0,0,0,0.14)]">
-              {/* Drag handle */}
               <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[#e0e0e0]" />
 
               {/* Product preview */}
@@ -298,7 +342,6 @@ export default function MarketDetail() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="h-px bg-[#f0f0f0] mb-4" />
 
               {/* Quantity */}
@@ -335,20 +378,6 @@ export default function MarketDetail() {
             </div>
           </>
         )}
-
-        {/* Store & Chat Bottom Nav (product page) */}
-        <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 w-full max-w-md">
-          <div className="flex items-center gap-4 bg-transparent px-5">
-            <button className="flex items-center gap-1.5 text-[12px] text-[#888]">
-              <Store size={18} />
-              <span>Toko</span>
-            </button>
-            <button className="flex items-center gap-1.5 text-[12px] text-[#888]">
-              <MessageSquare size={18} />
-              <span>obrolan</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
