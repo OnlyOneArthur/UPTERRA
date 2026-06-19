@@ -11,14 +11,15 @@ import {
   ShoppingBag,
   Settings,
 } from "lucide-react";
+import { useCartStore } from "../store/cartStore";
 
 const quickActions = [
-  { label: "Pesanan", icon: ClipboardList },
-  { label: "Percakapan", icon: MessageSquare },
-  { label: "Alamat", icon: MapPin },
-  { label: "Riwayat", icon: RotateCcw },
-  { label: "Metode Pembayaran", icon: CreditCard },
-  { label: "Mulai Penjualan", icon: Store },
+  { label: "Pesanan", icon: ClipboardList, path: "/pesanan-saya" },
+  { label: "Percakapan", icon: MessageSquare, path: null },
+  { label: "Alamat", icon: MapPin, path: null },
+  { label: "Riwayat", icon: RotateCcw, path: null },
+  { label: "Metode Pembayaran", icon: CreditCard, path: null },
+  { label: "Mulai Penjualan", icon: Store, path: null },
 ];
 
 const categories = ["Semua", "Produk Populer", "komponen PC", "Tas", "Sparepart"];
@@ -93,6 +94,7 @@ function formatPrice(price) {
 export default function Market() {
   const [activeCategory, setActiveCategory] = useState("Semua");
   const navigate = useNavigate();
+  const cartCount = useCartStore((s) => s.totalCount());
 
   const filtered =
     activeCategory === "Semua"
@@ -114,12 +116,23 @@ export default function Market() {
               <span className="text-[15px] font-bold text-[#2d2d2d] tracking-tight">UPTERRA</span>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]" aria-label="Settings">
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]"
+                aria-label="Settings"
+              >
                 <Settings size={16} className="text-[#555]" />
               </button>
-              <button className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]" aria-label="Keranjang" onClick={() => navigate("/cart")}>
+              <button
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#f0f0f0]"
+                aria-label="Keranjang"
+                onClick={() => navigate("/cart")}
+              >
                 <ShoppingBag size={18} className="text-[#555]" />
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">6</span>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
+                    {cartCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -132,8 +145,12 @@ export default function Market() {
         {/* Quick Actions */}
         <div className="bg-white px-5 pb-5 pt-4">
           <div className="grid grid-cols-6 gap-1">
-            {quickActions.map(({ label, icon: Icon }) => (
-              <button key={label} className="flex flex-col items-center gap-1.5">
+            {quickActions.map(({ label, icon: Icon, path }) => (
+              <button
+                key={label}
+                onClick={() => path && navigate(path)}
+                className="flex flex-col items-center gap-1.5"
+              >
                 <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#f2f2f2]">
                   <Icon size={20} className="text-[#555]" />
                 </div>
@@ -147,8 +164,12 @@ export default function Market() {
         <div className="mx-5 mt-4">
           <div className="relative overflow-hidden rounded-[20px] bg-[#3da85e] px-5 py-5">
             <div className="relative z-10 max-w-[55%]">
-              <h2 className="text-[14px] font-bold leading-snug text-white">Selamat datang di UPTERRA marketplace</h2>
-              <p className="mt-1 text-[10px] leading-relaxed text-white/80">100% produk daur ulang dan elektronik second berkualitas</p>
+              <h2 className="text-[14px] font-bold leading-snug text-white">
+                Selamat datang di UPTERRA marketplace
+              </h2>
+              <p className="mt-1 text-[10px] leading-relaxed text-white/80">
+                100% produk daur ulang dan elektronik second berkualitas
+              </p>
               <button className="mt-3 rounded-full border border-white px-4 py-1.5 text-[11px] font-semibold text-white">
                 Lihat Produk
               </button>
@@ -200,8 +221,12 @@ export default function Market() {
                 loading="lazy"
               />
               <div className="px-3 py-2.5">
-                <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">{product.title}</p>
-                <p className="mt-1 text-[13px] font-bold text-[#e03535]">{formatPrice(product.price)}</p>
+                <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">
+                  {product.title}
+                </p>
+                <p className="mt-1 text-[13px] font-bold text-[#e03535]">
+                  {formatPrice(product.price)}
+                </p>
                 {product.rating && (
                   <div className="mt-1 flex items-center gap-1">
                     <span className="text-[11px] text-yellow-400">★</span>
