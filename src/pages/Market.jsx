@@ -14,7 +14,7 @@ import {
 import { useCartStore } from "../store/cartStore";
 
 const quickActions = [
-  { label: "Pesanan", icon: ClipboardList, path: "/pesanan-saya" },
+  { label: "Pesanan", icon: ClipboardList, path: "/pesanan" },
   { label: "Percakapan", icon: MessageSquare, path: null },
   { label: "Alamat", icon: MapPin, path: null },
   { label: "Riwayat", icon: RotateCcw, path: null },

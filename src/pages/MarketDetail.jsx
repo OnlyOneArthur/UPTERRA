@@ -64,7 +64,7 @@ export default function MarketDetail() {
         [{ ...product, variantLabel: selectedVariant.label, quantity }],
         product.price * quantity
       );
-      navigate("/pesanan-saya");
+      navigate("/pesanan");
     }
   };
 
