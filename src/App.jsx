@@ -6,6 +6,8 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import Market from "./pages/Market";
 import MarketDetail from "./pages/MarketDetail";
+import Cart from "./pages/Cart";
+import Pesanan from "./pages/Pesanan";
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/market" element={<Market />} />
         <Route path="/market/:id" element={<MarketDetail />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/pesanan" element={<Pesanan />} />
       </Routes>
     </BrowserRouter>
   );
