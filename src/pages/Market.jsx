@@ -23,7 +23,7 @@ const quickActions = [
 
 const categories = ["Semua", "Produk Populer", "komponen PC", "Tas", "Sparepart"];
 
-const products = [
+export const products = [
   {
     id: 1,
     title: "keyboard apple mac second ...",
