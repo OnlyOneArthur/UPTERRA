@@ -9,6 +9,7 @@ import MarketDetail from "./pages/MarketDetail";
 import Cart from "./pages/Cart";
 import Pesanan from "./pages/Pesanan";
 import ProductChat from "./pages/ProductChat";
+import MapView from "./pages/MapView";
 import PageWrapper from "./components/layout/PageWrapper";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/map" element={<MapView />} />
 
         {/* Main app — BottomNav always visible */}
         <Route element={<PageWrapper />}>

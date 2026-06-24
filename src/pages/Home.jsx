@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Camera, ChevronRight, ScanLine } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
 import loginUpterra from "../assets/images/profile.svg";
@@ -79,6 +80,7 @@ const dropPoints = [
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("Anorganik");
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-[#f6f6f4] font-poppins">
@@ -208,7 +210,11 @@ export default function Home() {
             <h3 className="text-[16px] font-semibold text-[#303030]">
               Titik Penampungan Terdekat
             </h3>
-            <button className="text-sm font-semibold text-[#2d9b57]">
+            {/* Tombol Lihat Peta — sekarang navigate ke /map */}
+            <button
+              onClick={() => navigate("/map")}
+              className="text-sm font-semibold text-[#2d9b57] active:opacity-70 transition-opacity"
+            >
               Lihat Peta
             </button>
           </div>
@@ -247,12 +253,34 @@ export default function Home() {
               </div>
             ))}
           </div>
+
+          {/* Preview peta mini — klik buka full MapView */}
+          <button
+            onClick={() => navigate("/map")}
+            className="mt-4 w-full overflow-hidden rounded-[18px] relative active:scale-[0.99] transition-transform"
+          >
+            <img
+              src="https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/115.2126,-8.6705,12,0/800x200?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw"
+              alt="Peta titik penampungan"
+              className="w-full h-[120px] object-cover"
+              onError={(e) => {
+                // Fallback ke OpenStreetMap static jika Mapbox gagal
+                e.target.src = `https://staticmap.openstreetmap.de/staticmap.php?center=-8.6705,115.2126&zoom=12&size=800x200&maptype=mapnik`;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-between px-4 py-3">
+              <span className="text-white text-[12px] font-semibold">Buka Peta Penuh</span>
+              <span className="bg-white text-[#3da85e] text-[10px] font-bold px-3 py-1 rounded-full">
+                {dropPoints.length} Lokasi
+              </span>
+            </div>
+          </button>
         </section>
 
         <section className="mt-6">
           <div className="flex items-center justify-between">
             <h3 className="text-[16px] font-semibold text-[#303030]">
-              Rekomendasi Produk Bu’
+              Rekomendasi Produk Bu'
             </h3>
             <button className="text-sm font-semibold text-[#2d9b57]">
               Lihat Semua
