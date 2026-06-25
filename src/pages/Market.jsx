@@ -56,7 +56,7 @@ export const products = [
     title: "RAM Laptop 8GB DDR4 second pull-out tested",
     price: 280000,
     image:
-      "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=400&q=80",
+      "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782382347/ram_upbi1u.png",
     rating: 4.3,
     sold: 15,
     category: "komponen PC",
@@ -108,7 +108,8 @@ export const products = [
     id: 5,
     title: "Tas kerajinan daur ulang plastik dan kulit serbaguna",
     price: 450000,
-    image: "../assets/images/tas-daur-ulang.svg",
+    image:
+      "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782382387/tasDaurUlang_k47jit.png",
     rating: 4.7,
     sold: 21,
     category: "Tas",
@@ -125,7 +126,7 @@ export const products = [
     title: "Totebag kanvas daur ulang bahan karung goni",
     price: 85000,
     image:
-      "https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=400&q=80",
+      "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782382660/totebag_vuc9y3.jpg",
     rating: 4.6,
     sold: 44,
     category: "Tas",
@@ -214,7 +215,7 @@ export const products = [
     title: "Pot kerajinan dari botol kaca daur ulang",
     price: 45000,
     image:
-      "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=400&q=80",
+      "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782382348/pot_u8t6ox.png",
     rating: 4.6,
     sold: 63,
     category: "Produk Populer",
