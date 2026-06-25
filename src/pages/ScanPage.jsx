@@ -10,8 +10,10 @@ export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
-  const [mode, setMode] = useState('voice');
+  // Default langsung kamera
+  const [mode, setMode] = useState('camera');
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
   const cameraStreamRef = useRef(null);
 
   const {
@@ -26,19 +28,21 @@ export default function ScanPage() {
     sendVideoFrame,
     sendTextMessage,
     error,
+    voiceError,
   } = useScanAI();
 
   // Auto-connect saat mount dan saat mode berubah
   useEffect(() => {
     startSession(mode);
     return () => stopSession();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   // Kamera stream — hanya aktif di mode kamera
   useEffect(() => {
     if (mode !== 'camera') {
       setCameraActive(false);
+      setCameraError(false);
       if (cameraStreamRef.current) {
         cameraStreamRef.current.getTracks().forEach((t) => t.stop());
         cameraStreamRef.current = null;
@@ -46,6 +50,7 @@ export default function ScanPage() {
       return;
     }
 
+    setCameraError(false);
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       .then((stream) => {
@@ -53,7 +58,10 @@ export default function ScanPage() {
         setCameraActive(true);
         if (videoRef.current) videoRef.current.srcObject = stream;
       })
-      .catch(() => setCameraActive(false));
+      .catch(() => {
+        setCameraActive(false);
+        setCameraError(true);
+      });
 
     return () => {
       if (cameraStreamRef.current) {
@@ -118,12 +126,25 @@ export default function ScanPage() {
             <video ref={videoRef} autoPlay playsInline muted className="sp-video" />
           ) : (
             <div className="sp-no-cam">
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-              <p>Izin kamera diperlukan</p>
-              <p style={{ fontSize: 12, opacity: 0.6 }}>Izinkan akses kamera di browser untuk melanjutkan</p>
+              {cameraError ? (
+                <>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  <p>Kamera tidak dapat dibuka</p>
+                  <p style={{ fontSize: 12, opacity: 0.6 }}>Pastikan izin kamera sudah diberikan di browser, lalu muat ulang halaman</p>
+                </>
+              ) : (
+                <>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <p>Membuka kamera...</p>
+                </>
+              )}
             </div>
           )}
 
@@ -133,7 +154,7 @@ export default function ScanPage() {
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
 
-          {/* Status badge */}
+          {/* Status badge — hanya tampil kalau ada info AI */}
           <div className="sp-status-badge">
             <span className={`sp-status-dot ${
               isConnecting ? 'connecting' : sessionActive ? 'live' : 'idle'
@@ -169,9 +190,9 @@ export default function ScanPage() {
             />
           </div>
 
-          {(detectionResult || aiResponse || error || transcript) && (
+          {/* Hasil deteksi & AI response — hanya tampil di kamera, bukan pesan error voice */}
+          {(detectionResult || aiResponse || transcript) && (
             <div className="sp-result-panel">
-              {error && <div className="sp-error">{error}</div>}
               {detectionResult && <ScanResultCard result={detectionResult} />}
               {transcript && (
                 <div className="sp-transcript">
@@ -208,7 +229,7 @@ export default function ScanPage() {
                 : 'Ceritakan barang atau sampah yang mau diidentifikasi'}
             </p>
 
-            {/* Mic button — tappable untuk toggle on/off */}
+            {/* Mic button */}
             <button
               className={`sp-mic-btn ${
                 sessionActive
@@ -218,7 +239,6 @@ export default function ScanPage() {
               onClick={handleMicTap}
               aria-label={sessionActive ? 'Hentikan sesi' : 'Mulai sesi AI'}
             >
-              {/* Gelombang animasi */}
               {sessionActive && (
                 <>
                   <span className={`sp-wave sp-wave-1 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
@@ -242,15 +262,14 @@ export default function ScanPage() {
               </span>
             </button>
 
-            {/* Hanya tampilkan teks status kalau connecting atau ada error */}
             {isConnecting && (
               <p className="sp-voice-tap-hint">Mohon tunggu...</p>
             )}
 
-            {/* Error + text fallback */}
-            {error && !isConnecting && (
+            {/* Error + text fallback — HANYA di mode voice */}
+            {voiceError && !isConnecting && (
               <div className="sp-voice-error">
-                <p>{error}</p>
+                <p>{voiceError}</p>
                 <form
                   className="sp-text-fallback"
                   onSubmit={(e) => {
