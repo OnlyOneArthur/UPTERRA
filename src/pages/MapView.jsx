@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Navigation, MapPin, X } from "lucide-react";
 
-// Data titik penampungan — koordinat real Denpasar & sekitarnya
 const dropPoints = [
   {
     id: 1,
@@ -56,6 +55,43 @@ const dropPoints = [
   },
 ];
 
+function loadLeaflet() {
+  return new Promise((resolve) => {
+    // Already loaded
+    if (window.L) {
+      resolve(window.L);
+      return;
+    }
+
+    // CSS
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
+    // JS — only append once
+    if (!document.getElementById("leaflet-js")) {
+      const script = document.createElement("script");
+      script.id = "leaflet-js";
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.onload = () => resolve(window.L);
+      script.onerror = () => console.error("Failed to load Leaflet");
+      document.head.appendChild(script);
+    } else {
+      // Script tag exists but L not ready yet — poll
+      const interval = setInterval(() => {
+        if (window.L) {
+          clearInterval(interval);
+          resolve(window.L);
+        }
+      }, 50);
+    }
+  });
+}
+
 export default function MapView() {
   const navigate = useNavigate();
   const mapRef = useRef(null);
@@ -63,81 +99,66 @@ export default function MapView() {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
-  // Load Leaflet CSS + JS dynamically (no npm install needed)
   useEffect(() => {
-    if (document.getElementById("leaflet-css")) {
+    let destroyed = false;
+
+    loadLeaflet().then((L) => {
+      if (destroyed || !mapRef.current || mapInstanceRef.current) return;
+
       setLeafletLoaded(true);
-      return;
-    }
 
-    const link = document.createElement("link");
-    link.id = "leaflet-css";
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-    document.head.appendChild(link);
-
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    script.onload = () => setLeafletLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  // Init map setelah Leaflet ready
-  useEffect(() => {
-    if (!leafletLoaded || !mapRef.current || mapInstanceRef.current) return;
-
-    const L = window.L;
-
-    const map = L.map(mapRef.current, {
-      center: [-8.6705, 115.2126], // Denpasar center
-      zoom: 13,
-      zoomControl: false,
-    });
-
-    mapInstanceRef.current = map;
-
-    // OpenStreetMap tiles — gratis, no API key
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-      maxZoom: 19,
-    }).addTo(map);
-
-    // Custom marker icon
-    const createIcon = (color) =>
-      L.divIcon({
-        className: "",
-        html: `
-          <div style="
-            width: 32px; height: 32px;
-            background: ${color};
-            border: 3px solid white;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-          "></div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -36],
+      const map = L.map(mapRef.current, {
+        center: [-8.6705, 115.2126],
+        zoom: 13,
+        zoomControl: false,
       });
 
-    // Tambah marker setiap titik
-    dropPoints.forEach((point) => {
-      const marker = L.marker([point.lat, point.lng], {
-        icon: createIcon(point.badgeColor),
+      mapInstanceRef.current = map;
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
       }).addTo(map);
 
-      marker.on("click", () => {
-        setSelectedPoint(point);
-        map.setView([point.lat, point.lng], 15, { animate: true });
+      const createIcon = (color) =>
+        L.divIcon({
+          className: "",
+          html: `<div style="
+            width:32px;height:32px;
+            background:${color};
+            border:3px solid white;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            box-shadow:0 4px 12px rgba(0,0,0,0.25);
+          "></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -36],
+        });
+
+      dropPoints.forEach((point) => {
+        const marker = L.marker([point.lat, point.lng], {
+          icon: createIcon(point.badgeColor),
+        }).addTo(map);
+
+        marker.on("click", () => {
+          setSelectedPoint(point);
+          map.setView([point.lat, point.lng], 15, { animate: true });
+        });
       });
+
+      L.control.zoom({ position: "bottomright" }).addTo(map);
     });
 
-    // Zoom controls custom position
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-  }, [leafletLoaded]);
+    return () => {
+      destroyed = true;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
-  // Fly to point dari list bawah
   const flyToPoint = (point) => {
     setSelectedPoint(point);
     if (mapInstanceRef.current) {
@@ -173,6 +194,7 @@ export default function MapView() {
         style={{ marginTop: "72px", marginBottom: "260px" }}
       />
 
+      {/* Loading overlay */}
       {!leafletLoaded && (
         <div
           className="absolute inset-0 flex items-center justify-center bg-[#f6f6f4] z-[999]"
@@ -187,7 +209,8 @@ export default function MapView() {
 
       {/* Selected Point Info Card */}
       {selectedPoint && (
-        <div className="absolute z-[1001] left-4 right-4 bg-white rounded-[18px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-4"
+        <div
+          className="absolute z-[1001] left-4 right-4 bg-white rounded-[18px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-4"
           style={{ bottom: "268px" }}
         >
           <div className="flex items-start justify-between gap-2">
