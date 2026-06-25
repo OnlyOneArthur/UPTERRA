@@ -1,0 +1,492 @@
+/* ==========================================
+   UPTERRA — Scan Feature Styles
+   ========================================== */
+
+/* ---- Root Layout ---- */
+.scan-root {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+}
+
+/* ---- Camera Viewport ---- */
+.scan-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: #000;
+}
+
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scan-no-camera {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+  color: #555;
+}
+
+.scan-cam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+/* ---- Top Bar ---- */
+.scan-top-bar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+/* ---- Mode Toggle ---- */
+.smt-root {
+  display: flex;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px;
+  gap: 2px;
+}
+
+.smt-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.smt-option.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.smt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: background 0.2s;
+}
+
+.smt-dot.on {
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+/* ---- Scan Frame (Corner Brackets) ---- */
+.scan-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.sf-corner {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-color: rgba(255, 255, 255, 0.9);
+  border-style: solid;
+}
+
+.sf-tl { top: 15%; left: 8%; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.sf-tr { top: 15%; right: 8%; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.sf-bl { bottom: 22%; left: 8%; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.sf-br { bottom: 22%; right: 8%; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* Active scanning: brackets turn green */
+.scan-frame.scanning .sf-corner {
+  border-color: #22c55e;
+  transition: border-color 0.3s ease;
+}
+
+/* ---- Scanning line ---- */
+.sf-scan-line {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  top: 15%;
+  animation: scanline 2s ease-in-out infinite;
+}
+
+@keyframes scanline {
+  0% { top: 15%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 78%; opacity: 0; }
+}
+
+/* ---- Status badge ---- */
+.scan-status-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 20;
+}
+
+.scan-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.scan-status-dot.live {
+  background: #22c55e;
+  animation: pulse 1.5s infinite;
+}
+
+.scan-status-dot.connecting {
+  background: #f59e0b;
+  animation: pulse 0.8s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+/* ---- Gallery pick button ---- */
+.scan-bottom-overlay {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+.scan-gallery-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.scan-gallery-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.scan-gallery-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.97);
+}
+
+.scan-file-input {
+  display: none;
+}
+
+/* ---- Voice mode visual ---- */
+.scan-voice-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.scan-voice-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.3s;
+  position: relative;
+}
+
+.scan-voice-ring.active {
+  border-color: #22c55e;
+  color: #22c55e;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+  animation: ring-pulse 1.5s infinite;
+}
+
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+  50% { box-shadow: 0 0 50px rgba(34, 197, 94, 0.6); }
+}
+
+.scan-voice-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---- Result Panel ---- */
+.scan-panel {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.scan-panel > * { pointer-events: auto; }
+
+.scan-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #fca5a5;
+}
+
+.scan-transcript {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.scan-ai-response {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: pre-wrap;
+}
+
+.scan-label {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #22c55e;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* ---- Result Card ---- */
+.src-card {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.src-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.src-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.src-component {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+}
+
+.src-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.src-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.src-b3 {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.src-b3.danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+.src-b3.safe { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+
+.src-condition {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.src-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+}
+
+/* ---- FAB (Start/Stop session) ---- */
+.scan-fab-wrap {
+  position: absolute;
+  bottom: 90px;
+  right: 20px;
+  z-index: 40;
+}
+
+.scan-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.scan-fab.start {
+  background: #22c55e;
+  color: #fff;
+}
+
+.scan-fab.start:hover { background: #16a34a; }
+
+.scan-fab.stop {
+  background: #ef4444;
+  color: #fff;
+}
+
+.scan-fab.stop:hover { background: #dc2626; }
+
+.scan-fab.connecting {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f59e0b;
+}
+
+.scan-fab:active { transform: scale(0.93); }
+
+.scan-fab:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Bottom Tab Bar ---- */
+.scan-tabbar {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #111;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+}
+
+.scan-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 16px;
+  font-size: 10px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.2s;
+  border-radius: 8px;
+}
+
+.scan-tab-item.active {
+  color: #22c55e;
+  position: relative;
+}
+
+/* Center scan tab: green circle background */
+.scan-tab-item.active:nth-child(3) {
+  background: #22c55e;
+  color: #fff;
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  margin-top: -10px;
+  justify-content: center;
+  font-size: 0;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.5);
+}
+
+.scan-tab-item:active { opacity: 0.7; }
