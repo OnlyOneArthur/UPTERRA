@@ -6,7 +6,6 @@ import ScanResultCard from '../components/ScanResultCard';
 import { useScanAI } from '../hooks/useScanAI';
 import '../styles/scan.css';
 
-// ---- Error toast ----
 function ErrorToast({ error, onDismiss }) {
   if (!error) return null;
   return (
@@ -29,7 +28,6 @@ function ErrorToast({ error, onDismiss }) {
   );
 }
 
-// ---- Text input fallback ----
 function TextInput({ onSend, disabled }) {
   const [val, setVal] = useState('');
   const submit = () => { if (val.trim()) { onSend(val.trim()); setVal(''); } };
@@ -48,47 +46,35 @@ function TextInput({ onSend, disabled }) {
   );
 }
 
-// ---- Embedded Bottom Nav (khusus ScanPage agar shutter bisa overlap) ----
 function ScanBottomNav({ mode, sessionActive, onShutterPress, isConnecting, isAIProcessing }) {
   const navigate = useNavigate();
   return (
     <div className="sp-bottom-nav">
-      {/* Beranda */}
       <button className="sp-nav-item" onClick={() => navigate('/home')}>
         <Home size={22} />
         <span>Beranda</span>
       </button>
-      {/* Peta */}
       <button className="sp-nav-item" onClick={() => navigate('/map')}>
         <MapPin size={22} />
         <span>Peta</span>
       </button>
-      {/* Shutter (center, elevated) */}
       <div className="sp-nav-center">
         <button
-          className={`sp-shutter ${
-            mode === 'camera'
-              ? sessionActive ? 'sp-shutter--stop' : 'sp-shutter--idle'
-              : 'sp-shutter--scan'
-          }`}
+          className={`sp-shutter ${sessionActive ? 'sp-shutter--stop' : 'sp-shutter--idle'}`}
           onClick={onShutterPress}
           disabled={isConnecting || isAIProcessing}
           aria-label={sessionActive ? 'Hentikan' : 'Mulai scan'}
         >
-          {mode === 'camera' && sessionActive ? (
-            <span className="sp-shutter-stop" />
-          ) : (
-            <ScanLine size={28} color="#fff" />
-          )}
+          {sessionActive
+            ? <span className="sp-shutter-stop" />
+            : <ScanLine size={28} color="#fff" />}
         </button>
         <span className="sp-nav-label-center">Scan</span>
       </div>
-      {/* Pasar */}
       <button className="sp-nav-item" onClick={() => navigate('/market')}>
         <ShoppingBag size={22} />
         <span>Pasar</span>
       </button>
-      {/* Akun */}
       <button className="sp-nav-item" onClick={() => navigate('/profile')}>
         <User size={22} />
         <span>Akun</span>
@@ -97,10 +83,9 @@ function ScanBottomNav({ mode, sessionActive, onShutterPress, isConnecting, isAI
   );
 }
 
-// ---- Mode Toggle Pill ----
-function ModeToggle({ mode, onChange }) {
+function ModeToggle({ mode, onChange, dark = true }) {
   return (
-    <div className="sp-mode-pill">
+    <div className={`sp-mode-pill${dark ? '' : ' sp-mode-pill--light'}`}>
       <button
         className={`sp-mode-btn ${mode === 'camera' ? 'sp-mode-btn--active' : ''}`}
         onClick={() => onChange('camera')}
@@ -147,70 +132,83 @@ export default function ScanPage() {
 
   useEffect(() => { setDismissedError(false); }, [error]);
 
-  // Kamera stream
   useEffect(() => {
     if (mode !== 'camera') {
-      setCameraActive(false); setCameraError(null);
+      setCameraActive(false);
+      setCameraError(null);
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
-      cameraStreamRef.current = null; return;
+      cameraStreamRef.current = null;
+      return;
     }
     setCameraError(null);
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+    // coba environment dulu, kalau gagal fallback ke any camera
+    const tryGetCamera = (constraints) =>
+      navigator.mediaDevices.getUserMedia(constraints);
+
+    tryGetCamera({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      .catch(() => tryGetCamera({ video: true, audio: false }))
       .then((stream) => {
         cameraStreamRef.current = stream;
         setCameraActive(true);
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
       })
       .catch((err) => {
         setCameraActive(false);
-        setCameraError(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' ? 'denied' : 'unavailable');
+        setCameraError(
+          err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' ? 'denied' : 'unavailable'
+        );
       });
-    return () => { cameraStreamRef.current?.getTracks().forEach((t) => t.stop()); cameraStreamRef.current = null; };
+    return () => {
+      cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current = null;
+    };
   }, [mode]);
 
-  // Auto start session
   useEffect(() => {
     startSession(mode);
     return () => stopSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Kirim frame tiap 4 detik
   useEffect(() => {
     if (mode !== 'camera' || !cameraActive || !videoRef.current) return;
     const canvas = document.createElement('canvas');
     const interval = setInterval(() => {
       const video = videoRef.current;
       if (!video || video.videoWidth === 0) return;
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0);
       sendVideoFrame(canvas.toDataURL('image/jpeg', 0.65).split(',')[1]);
     }, 4000);
     return () => clearInterval(interval);
   }, [mode, cameraActive, sendVideoFrame]);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleGalleryPick = useCallback((e) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => sendVideoFrame(ev.target.result.split(',')[1]);
-    reader.readAsDataURL(file); e.target.value = '';
+    reader.readAsDataURL(file);
+    e.target.value = '';
   }, [sendVideoFrame]);
 
   const handleModeChange = useCallback((newMode) => {
-    stopSession(); setMode(newMode);
+    stopSession();
+    setMode(newMode);
   }, [stopSession]);
 
   const handleShutter = useCallback(() => {
-    if (mode === 'camera') {
-      if (isConnecting || isAIProcessing) return;
-      if (sessionActive) stopSession(); else startSession('camera');
-    } else {
-      if (isConnecting || isAIProcessing) return;
-      if (sessionActive) stopSession(); else startSession('voice');
-    }
+    if (isConnecting || isAIProcessing) return;
+    if (sessionActive) stopSession();
+    else startSession(mode);
   }, [mode, isConnecting, isAIProcessing, sessionActive, stopSession, startSession]);
 
   const visibleError = !dismissedError && error ? error : null;
@@ -218,28 +216,36 @@ export default function ScanPage() {
   return (
     <div className="sp-root">
 
-      {/* ====== MODE KAMERA ====== */}
+      {/* ====== KAMERA ====== */}
       {mode === 'camera' && (
         <div className="sp-cam-root">
           <video
             ref={videoRef}
-            autoPlay playsInline muted
+            autoPlay
+            playsInline
+            muted
             className="sp-video"
-            style={{ display: cameraActive ? 'block' : 'none' }}
           />
 
           {!cameraActive && (
             <div className="sp-no-cam">
               {cameraError === 'denied' ? (
-                <><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/><line x1="1" y1="1" x2="23" y2="23"/>
-                </svg><p>Izin kamera diperlukan</p><p className="sp-no-cam-sub">Aktifkan kamera di pengaturan browser, lalu muat ulang.</p></>
+                <>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/><line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                  <p>Izin kamera diperlukan</p>
+                  <p className="sp-no-cam-sub">Aktifkan kamera di pengaturan browser, lalu muat ulang.</p>
+                </>
               ) : cameraError === 'unavailable' ? (
-                <><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg><p>Kamera tidak terdeteksi</p></>
+                <>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <p>Kamera tidak terdeteksi</p>
+                </>
               ) : (
                 <div className="sp-cam-loading">
                   <span className="sp-cam-spinner" />
@@ -251,14 +257,12 @@ export default function ScanPage() {
 
           <ScanFrame active={sessionActive} />
 
-          {/* Top: mode toggle pill */}
           <div className="sp-top-bar">
-            <ModeToggle mode={mode} onChange={handleModeChange} />
+            <ModeToggle mode={mode} onChange={handleModeChange} dark />
           </div>
 
           <ErrorToast error={visibleError} onDismiss={() => setDismissedError(true)} />
 
-          {/* Caption AI */}
           {caption && (
             <div className="sp-caption-overlay">
               <div className="sp-caption-inner">
@@ -268,9 +272,12 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* Tombol galeri kiri bawah */}
-          <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()} aria-label="Pilih dari galeri">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button
+            className="sp-gallery-btn"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Pilih dari galeri"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <polyline points="21 15 16 10 5 21"/>
@@ -292,12 +299,13 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ====== MODE SUARA ====== */}
+      {/* ====== SUARA ====== */}
       {mode === 'voice' && (
         <div className="sp-voice-root">
           <div className="sp-voice-topbar">
-            <ModeToggle mode={mode} onChange={handleModeChange} />
+            <ModeToggle mode={mode} onChange={handleModeChange} dark={false} />
           </div>
+
           <div className="sp-voice-body">
             {!sessionActive && !isConnecting && messages.length === 0 && (
               <p className="sp-voice-hint">Ceritakan barang atau sampah yang mau diidentifikasi</p>
@@ -372,7 +380,6 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Embedded bottom nav — menggantikan BottomNav agar shutter overlap */}
       <ScanBottomNav
         mode={mode}
         sessionActive={sessionActive}
