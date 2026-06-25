@@ -92,6 +92,12 @@ export default function KonfirmasiLaporan() {
             Lapor tumpukan lain
           </button>
           <button
+            onClick={() => navigate("/laporan-saya")}
+            className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-[#3da85e] bg-white py-3.5 text-[13px] font-semibold text-[#3da85e] active:bg-[#eaf6ee] mb-3 transition-colors"
+          >
+            Lihat Laporan Saya
+          </button>
+          <button
             onClick={() => navigate("/home")}
             className="w-full rounded-full border-2 border-[#e0e0e0] bg-white py-3.5 text-[13px] font-semibold text-[#555] active:bg-[#f5f5f5] transition-colors"
           >
