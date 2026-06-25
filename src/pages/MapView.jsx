@@ -202,12 +202,12 @@ export default function MapView() {
   };
 
   const HEADER_H = 130;
-  // Total bottom area height = bottom sheet visible content + navbar
-  // BottomNav is fixed to viewport; bottom sheet extends to bottom:0
-  // and uses paddingBottom to push list content above the navbar.
-  const NAV_H = 74;       // BottomNav actual rendered height
-  const SHEET_VISIBLE = 210; // visible sheet content above navbar
-  const BOTTOM_TOTAL = SHEET_VISIBLE + NAV_H; // total space reserved at bottom
+  // NAV_H = BottomNav rendered height (padding 10+20 + content ~44)
+  const NAV_H = 74;
+  // How tall the white bottom sheet content area appears above the navbar
+  const SHEET_CONTENT_H = 210;
+  // Total bottom offset to keep map clear of both sheet + navbar
+  const BOTTOM_TOTAL = SHEET_CONTENT_H + NAV_H;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-poppins">
@@ -291,7 +291,7 @@ export default function MapView() {
           </div>
         )}
 
-        {/* Map */}
+        {/* Map — bottom stops well above the sheet+nav so it never overlaps */}
         <div
           ref={mapRef}
           className="absolute left-0 right-0"
@@ -360,9 +360,10 @@ export default function MapView() {
         )}
 
         {/*
-          Bottom Sheet — extends all the way to bottom:0
-          so it physically merges with the BottomNav beneath it.
-          paddingBottom pushes list content above the navbar.
+          Bottom Sheet:
+          - bottom: 0 so it physically touches the BottomNav (same bg = seamless)
+          - height: BOTTOM_TOTAL so it covers both the content area + nav underlay
+          - z-[1000]: below BottomNav (z-[2000]) so nav always renders on top
         */}
         <div
           className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-[24px] shadow-[0_-4px_24px_rgba(0,0,0,0.10)]"
@@ -378,10 +379,10 @@ export default function MapView() {
             </p>
           </div>
 
-          {/* List scrolls within the sheet but stops above the navbar */}
+          {/* Scrollable list — height stops before the navbar */}
           <div
             className="overflow-y-auto px-4"
-            style={{ height: `${SHEET_VISIBLE - 70}px` }}
+            style={{ height: `${SHEET_CONTENT_H - 60}px` }}
           >
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center pt-8 text-center">

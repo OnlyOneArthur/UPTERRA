@@ -27,7 +27,6 @@ export default function BottomNav() {
     location.pathname.startsWith(n.to)
   );
 
-  // iOS spring easing — matches UIKit's spring feel
   const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
   const DURATION = "0.44s";
 
@@ -46,18 +45,12 @@ export default function BottomNav() {
     const left    = elRect.left - navRect.left + elRect.width / 2 - pillW / 2;
 
     if (animated) {
-      // iOS spring slide for position + width
       pill.style.transition =
         `left ${DURATION} ${SPRING}, ` +
         `width ${DURATION} ${SPRING}, ` +
         `opacity 0.20s ease, ` +
         `transform ${DURATION} ${SPRING}`;
-
-      if (shine) {
-        shine.style.transition = `opacity 0.20s ease`;
-      }
-
-      // Subtle squeeze-then-expand on the pill (like iOS tab bar)
+      if (shine) shine.style.transition = `opacity 0.20s ease`;
       pill.style.transform = "scaleY(0.88) scaleX(0.94)";
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -73,7 +66,6 @@ export default function BottomNav() {
     pill.style.width   = pillW + "px";
     pill.style.opacity = "1";
 
-    // Flicker the shine highlight like a real glass reflection
     if (shine && animated) {
       shine.style.opacity = "0.85";
       setTimeout(() => { shine.style.opacity = "0.45"; }, 180);
@@ -98,15 +90,14 @@ export default function BottomNav() {
   return (
     <nav
       ref={navRef}
-      className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2"
+      // z-[2000] ensures navbar always renders above map tiles (z-[1000]) and bottom sheet
+      className="fixed bottom-0 left-1/2 z-[2000] w-full max-w-md -translate-x-1/2"
       style={{
-        // iOS frosted glass — same as Control Center / Tab Bar
         background:           "rgba(249,249,249,0.78)",
         backdropFilter:       "blur(28px) saturate(200%) brightness(1.08)",
         WebkitBackdropFilter: "blur(28px) saturate(200%) brightness(1.08)",
         borderTop:            "0.5px solid rgba(255,255,255,0.62)",
         borderRadius:         "28px 28px 0 0",
-        // Layered shadow like iOS floating panels
         boxShadow:
           "0 -1px 0 rgba(0,0,0,0.08), " +
           "0 -6px 32px rgba(0,0,0,0.08), " +
@@ -114,24 +105,21 @@ export default function BottomNav() {
         padding: "10px 20px 20px",
       }}
     >
-      {/* ── Glass pill indicator ── */}
       <span
         ref={pillRef}
         aria-hidden="true"
         style={{
           position:    "absolute",
           top:         8,
-          left:        "-999px",   // hidden until first snap
+          left:        "-999px",
           width:       80,
           height:      54,
           borderRadius: 18,
-          // Pill glass fill
           background:
             "linear-gradient(160deg, rgba(47,168,87,0.18) 0%, rgba(40,160,85,0.09) 100%)",
           border:               "1px solid rgba(47,168,87,0.30)",
           backdropFilter:       "blur(14px) saturate(180%)",
           WebkitBackdropFilter: "blur(14px) saturate(180%)",
-          // iOS-style inner glow + drop shadow
           boxShadow:
             "0 3px 14px rgba(47,168,87,0.18), " +
             "inset 0 1.5px 0 rgba(255,255,255,0.70), " +
@@ -144,7 +132,6 @@ export default function BottomNav() {
           overflow:      "hidden",
         }}
       >
-        {/* ── Shine highlight — the glassy sheen on top ── */}
         <span
           ref={shineRef}
           aria-hidden="true"
