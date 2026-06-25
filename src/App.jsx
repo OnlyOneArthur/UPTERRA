@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import LaporSampah from "./pages/LaporSampah";
 import KonfirmasiLaporan from "./pages/KonfirmasiLaporan";
 import LaporanSaya from "./pages/LaporanSaya";
+import Notification from "./pages/Notification";
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/lapor-sampah" element={<LaporSampah />} />
         <Route path="/konfirmasi-laporan" element={<KonfirmasiLaporan />} />
         <Route path="/laporan-saya" element={<LaporanSaya />} />
+        <Route path="/notifications" element={<Notification />} />
       </Routes>
     </BrowserRouter>
   );
