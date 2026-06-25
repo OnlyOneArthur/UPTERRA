@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import ScanFrame from '../components/ScanFrame';
 import ScanModeToggle from '../components/ScanModeToggle';
 import ScanResultCard from '../components/ScanResultCard';
@@ -12,6 +12,7 @@ export default function ScanPage() {
   const chatEndRef = useRef(null);
   const [mode, setMode] = useState('voice');
   const [cameraActive, setCameraActive] = useState(false);
+  const cameraStreamRef = useRef(null);
 
   const {
     sessionActive,
@@ -27,33 +28,42 @@ export default function ScanPage() {
     error,
   } = useScanAI();
 
-  // Auto-start AI session saat halaman dibuka atau mode berubah
+  // Mulai session AI saat halaman dibuka / mode berubah
   useEffect(() => {
     startSession(mode);
     return () => stopSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Kamera stream
+  // Kamera stream — hanya aktif di mode kamera
   useEffect(() => {
-    let localStream = null;
-    if (mode === 'camera') {
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-        .then((s) => {
-          localStream = s;
-          setCameraActive(true);
-          if (videoRef.current) videoRef.current.srcObject = s;
-        })
-        .catch(() => setCameraActive(false));
-    } else {
+    if (mode !== 'camera') {
       setCameraActive(false);
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+        cameraStreamRef.current = null;
+      }
+      return;
     }
+
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      .then((stream) => {
+        cameraStreamRef.current = stream;
+        setCameraActive(true);
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      })
+      .catch(() => setCameraActive(false));
+
     return () => {
-      if (localStream) localStream.getTracks().forEach((t) => t.stop());
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+        cameraStreamRef.current = null;
+      }
     };
   }, [mode]);
 
-  // Kirim frame tiap 2 detik saat kamera aktif
+  // Kirim frame tiap 2 detik saat kamera aktif + sesi aktif
   useEffect(() => {
     if (!sessionActive || mode !== 'camera' || !videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -74,13 +84,20 @@ export default function ScanPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [aiResponse, transcript]);
 
-  const handleGalleryPick = (e) => {
+  const handleGalleryPick = useCallback((e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => sendVideoFrame(ev.target.result.split(',')[1]);
     reader.readAsDataURL(file);
-  };
+    // Reset input supaya file yang sama bisa dipilih lagi
+    e.target.value = '';
+  }, [sendVideoFrame]);
+
+  const handleModeChange = useCallback((newMode) => {
+    stopSession();
+    setMode(newMode);
+  }, [stopSession]);
 
   return (
     <div className="sp-root">
@@ -97,20 +114,32 @@ export default function ScanPage() {
                 <circle cx="12" cy="13" r="4"/>
               </svg>
               <p>Izin kamera diperlukan</p>
+              <p style={{ fontSize: 12, opacity: 0.6 }}>Izinkan akses kamera di browser untuk melanjutkan</p>
             </div>
           )}
 
           <ScanFrame active={sessionActive} />
 
           <div className="sp-top-bar">
-            <ScanModeToggle mode={mode} onChange={setMode} sessionActive={sessionActive} />
+            <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
 
-          {(sessionActive || isConnecting) && (
-            <div className="sp-status-badge">
-              <span className={`sp-status-dot ${isConnecting ? 'connecting' : 'live'}`} />
-              {isConnecting ? 'Menghubungkan...' : 'AI Aktif'}
-            </div>
+          {/* Status badge */}
+          <div className="sp-status-badge">
+            <span className={`sp-status-dot ${
+              isConnecting ? 'connecting' : sessionActive ? 'live' : 'idle'
+            }`} />
+            {isConnecting ? 'Menghubungkan...' : sessionActive ? 'AI Aktif' : 'Offline'}
+          </div>
+
+          {/* Tombol stop session */}
+          {sessionActive && (
+            <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan sesi AI">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+              Stop
+            </button>
           )}
 
           <div className="sp-gallery-wrap">
@@ -122,7 +151,13 @@ export default function ScanPage() {
               </svg>
               Pilih dari galeri
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryPick} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleGalleryPick}
+            />
           </div>
 
           {(detectionResult || aiResponse || error || transcript) && (
@@ -146,15 +181,14 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ====== MODE SUARA (LIGHT) ====== */}
+      {/* ====== MODE SUARA ====== */}
       {mode === 'voice' && (
         <div className="sp-voice-root">
           <div className="sp-top-bar sp-top-bar--light">
-            <ScanModeToggle mode={mode} onChange={setMode} sessionActive={sessionActive} />
+            <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
 
           <div className="sp-voice-body">
-            {/* Status hint */}
             <p className="sp-voice-hint">
               {sessionActive
                 ? isSpeaking
@@ -167,7 +201,6 @@ export default function ScanPage() {
 
             {/* Mic button + animasi gelombang */}
             <div className="sp-mic-wrap">
-              {/* Gelombang aktif saat sessionActive (lebih intens saat isSpeaking) */}
               {sessionActive && (
                 <>
                   <div className={`sp-wave sp-wave-1 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
@@ -176,7 +209,9 @@ export default function ScanPage() {
                 </>
               )}
               <div className={`sp-mic-btn ${
-                sessionActive ? (isSpeaking ? 'sp-mic-btn--speaking' : 'sp-mic-btn--active') : ''
+                sessionActive
+                  ? isSpeaking ? 'sp-mic-btn--speaking' : 'sp-mic-btn--active'
+                  : ''
               } ${isConnecting ? 'sp-mic-btn--loading' : ''}`}>
                 {isConnecting ? (
                   <svg className="sp-spin" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -194,13 +229,40 @@ export default function ScanPage() {
             </div>
 
             <p className="sp-voice-tap-hint">
-              {sessionActive ? 'Mic aktif — bicara langsung' : isConnecting ? 'Mohon tunggu...' : 'Menghubungkan...'}
+              {sessionActive
+                ? 'Mic aktif — bicara langsung'
+                : isConnecting
+                ? 'Mohon tunggu...'
+                : 'Ketuk Mulai untuk menghubungkan'}
             </p>
+
+            {/* Tombol start/stop manual */}
+            {!isConnecting && (
+              <button
+                className={`sp-session-btn ${sessionActive ? 'sp-session-btn--stop' : ''}`}
+                onClick={() => sessionActive ? stopSession() : startSession(mode)}
+              >
+                {sessionActive ? (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                    Hentikan Sesi
+                  </>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    Mulai Sesi AI
+                  </>
+                )}
+              </button>
+            )}
 
             {error && (
               <div className="sp-voice-error">
                 <p>{error}</p>
-                {/* Fallback: ketik pesan */}
                 <form
                   className="sp-text-fallback"
                   onSubmit={(e) => {
@@ -209,7 +271,7 @@ export default function ScanPage() {
                     if (val) { sendTextMessage(val); e.target.reset(); }
                   }}
                 >
-                  <input name="msg" placeholder="Ketik pesan ke AI..." className="sp-text-input" />
+                  <input name="msg" placeholder="Atau ketik pesan ke AI..." className="sp-text-input" />
                   <button type="submit" className="sp-text-send">Kirim</button>
                 </form>
               </div>

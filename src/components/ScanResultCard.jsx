@@ -1,27 +1,38 @@
 /**
  * ScanResultCard — Kartu hasil deteksi AI
- * Menampilkan: nama komponen, kategori, status B3, kondisi, dan rekomendasi aksi
+ * Menampilkan: nama komponen, kategori, status B3, kondisi, rekomendasi aksi
  */
 import '../styles/scan.css';
 
 const CATEGORY_COLOR = {
-  Baterai: '#ef4444',
-  PCB: '#f97316',
+  Baterai:    '#ef4444',
+  PCB:        '#f97316',
   Elektronik: '#3b82f6',
-  Kabel: '#a855f7',
-  Layar: '#06b6d4',
-  Plastik: '#6b7280',
-  Lainnya: '#9ca3af',
+  Kabel:      '#a855f7',
+  Layar:      '#06b6d4',
+  Plastik:    '#6b7280',
+  Lainnya:    '#9ca3af',
+};
+
+const CATEGORY_ICON = {
+  Baterai:    '🔋',
+  PCB:        '🖥️',
+  Elektronik: '💡',
+  Kabel:      '🔌',
+  Layar:      '📺',
+  Plastik:    '♻️',
+  Lainnya:    '📦',
 };
 
 export default function ScanResultCard({ result }) {
   if (!result || !result.detected) return null;
   const accentColor = CATEGORY_COLOR[result.category] || '#22c55e';
+  const icon = CATEGORY_ICON[result.category] || '📦';
 
   return (
-    <div className="src-card" style={{ '--accent': accentColor }}>
+    <div className="src-card src-card--animate" style={{ '--accent': accentColor }}>
       <div className="src-header">
-        <div className="src-dot" style={{ background: accentColor }} />
+        <span className="src-icon" role="img" aria-label={result.category}>{icon}</span>
         <span className="src-component">{result.component}</span>
         <span className="src-badge" style={{ background: accentColor + '22', color: accentColor }}>
           {result.category}
