@@ -102,7 +102,10 @@ export default function Home() {
             </div>
           </div>
 
-          <button className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
+          <button
+            onClick={() => navigate("/notifications")}
+            className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)] active:bg-gray-50 transition"
+          >
             <Bell size={18} className="text-[#6a6a6a]" />
             <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-semibold text-white">
               2
