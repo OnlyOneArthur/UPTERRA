@@ -2,11 +2,10 @@
    UPTERRA — Scan Page Styles
    ========================================== */
 
-html, body, #root {
-  margin: 0; padding: 0;
-  height: 100%;
-  overflow: hidden;
-}
+/* NOTE: The html/body/#root overflow:hidden has been REMOVED.
+   It was blocking scroll on every page in the app.
+   Scroll locking is now handled only inside .sp-root (Scan page)
+   via its own overflow:hidden, so other pages are unaffected. */
 
 /* Root */
 .sp-root {
