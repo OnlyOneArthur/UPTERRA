@@ -122,8 +122,8 @@ export default function Notification() {
             )}
           </div>
 
-          {/* Tabs */}
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {/* Tabs — pt-3 gives room above so unread badges are not clipped */}
+          <div className="mt-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const isActive = activeTab === tab;
               const tabUnread =
