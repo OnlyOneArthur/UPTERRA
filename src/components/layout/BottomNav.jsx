@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, MapPin, ScanLine, ShoppingBag, User } from "lucide-react";
 
@@ -10,42 +10,58 @@ const navItems = [
   { to: "/profile", label: "Akun",    icon: User },
 ];
 
+// DOM order indices of non-center items: [0,1,3,4]
+const DOM_ORDER = navItems
+  .map((n, i) => (!n.center ? i : null))
+  .filter((i) => i !== null);
+
+function getPillRect(navEl, itemEl) {
+  if (!navEl || !itemEl) return null;
+  const navRect  = navEl.getBoundingClientRect();
+  const elRect   = itemEl.getBoundingClientRect();
+  const pillW    = Math.max(elRect.width + 24, 72);
+  return {
+    left:  elRect.left - navRect.left + elRect.width / 2 - pillW / 2,
+    width: pillW,
+  };
+}
+
 export default function BottomNav() {
   const location = useLocation();
   const navRef   = useRef(null);
   const itemRefs = useRef([]);
 
-  // pill position state
-  const [pill, setPill] = useState({ left: 0, width: 0, opacity: 0 });
-
-  // find active index (exclude center scan button from pill)
   const nonCenterItems = navItems.filter((n) => !n.center);
-  const activeIndex = nonCenterItems.findIndex((n) =>
+  const activeIndex    = nonCenterItems.findIndex((n) =>
     location.pathname.startsWith(n.to)
   );
 
-  useEffect(() => {
-    if (activeIndex === -1 || !navRef.current) return;
+  // Initialize pill WITHOUT transition so it snaps to the correct tab on first render
+  const [pill, setPill]           = useState({ left: 0, width: 72, opacity: 0 });
+  const [animate, setAnimate]     = useState(false);
+  const initializedRef            = useRef(false);
 
-    // Map nonCenterItems index back to DOM refs index
-    // itemRefs are stored in render order (0-4), center item at index 2 is skipped for pill
-    const domOrder = navItems
-      .map((n, i) => (!n.center ? i : null))
-      .filter((i) => i !== null);
-    const domIdx = domOrder[activeIndex];
+  // useLayoutEffect so we read DOM before paint — avoids the flash from beranda
+  useLayoutEffect(() => {
+    if (activeIndex === -1) return;
+    const domIdx = DOM_ORDER[activeIndex];
+    const rect   = getPillRect(navRef.current, itemRefs.current[domIdx]);
+    if (!rect) return;
 
-    const el  = itemRefs.current[domIdx];
-    const nav = navRef.current;
-    if (!el || !nav) return;
-
-    const navRect = nav.getBoundingClientRect();
-    const elRect  = el.getBoundingClientRect();
-
-    setPill({
-      left:    elRect.left - navRect.left + elRect.width / 2 - 36,
-      width:   72,
-      opacity: 1,
-    });
+    if (!initializedRef.current) {
+      // First mount: snap to position instantly, no transition
+      setAnimate(false);
+      setPill({ ...rect, opacity: 1 });
+      // Enable transition on next frame so subsequent navigation slides
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnimate(true));
+      });
+      initializedRef.current = true;
+    } else {
+      // Route changed: slide with spring animation
+      setAnimate(true);
+      setPill({ ...rect, opacity: 1 });
+    }
   }, [activeIndex, location.pathname]);
 
   return (
@@ -53,33 +69,37 @@ export default function BottomNav() {
       ref={navRef}
       className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2"
       style={{
-        /* glassmorphism background */
         background:           "rgba(255, 255, 255, 0.72)",
         backdropFilter:       "blur(24px) saturate(180%)",
         WebkitBackdropFilter: "blur(24px) saturate(180%)",
-        borderTop:            "1px solid rgba(255,255,255,0.45)",
+        borderTop:            "1px solid rgba(255,255,255,0.5)",
         borderRadius:         "28px 28px 0 0",
         boxShadow:            "0 -6px 32px rgba(0,0,0,0.10), 0 -1px 0 rgba(255,255,255,0.6) inset",
-        padding:              "12px 28px 20px",
+        padding:              "10px 20px 20px",
       }}
     >
-      {/* Sliding glass pill indicator */}
+      {/* Glass pill — rounded rectangle, bigger than before */}
       <span
         aria-hidden="true"
         style={{
-          position:         "absolute",
-          top:              10,
-          left:             pill.left,
-          width:            pill.width,
-          height:           34,
-          borderRadius:     999,
-          background:       "rgba(40,160,85,0.13)",
-          border:           "1px solid rgba(40,160,85,0.18)",
-          backdropFilter:   "blur(8px)",
-          opacity:          pill.opacity,
-          transform:        "translateZ(0)",
-          transition:       "left 0.38s cubic-bezier(0.34,1.26,0.64,1), opacity 0.2s ease",
-          pointerEvents:    "none",
+          position:             "absolute",
+          top:                  8,
+          left:                 pill.left,
+          width:                pill.width,
+          height:               52,                                   // taller box
+          borderRadius:         16,                                   // rounded rect, not full pill
+          background:           "rgba(40,160,85,0.11)",
+          border:               "1.5px solid rgba(40,160,85,0.22)",
+          backdropFilter:       "blur(10px) saturate(160%)",
+          WebkitBackdropFilter: "blur(10px) saturate(160%)",
+          boxShadow:            "0 2px 12px rgba(40,160,85,0.10), inset 0 1px 0 rgba(255,255,255,0.6)",
+          opacity:              pill.opacity,
+          transform:            "translateZ(0)",
+          // transition only when animate flag is true
+          transition: animate
+            ? "left 0.42s cubic-bezier(0.34,1.28,0.64,1), width 0.42s cubic-bezier(0.34,1.28,0.64,1), opacity 0.18s ease"
+            : "opacity 0.18s ease",
+          pointerEvents:        "none",
         }}
       />
 
@@ -107,8 +127,7 @@ export default function BottomNav() {
                     </div>
                     <span
                       className="mt-1 text-[12px]"
-                      style={{ color: isActive ? "#28a055" : "#8d8d8d",
-                               transition: "color 0.2s ease" }}
+                      style={{ color: isActive ? "#28a055" : "#8d8d8d", transition: "color 0.2s ease" }}
                     >
                       Scan
                     </span>
@@ -124,18 +143,17 @@ export default function BottomNav() {
               to={to}
               ref={(el) => (itemRefs.current[idx] = el)}
               className="flex flex-col items-center gap-1 relative z-10"
-              style={{ minWidth: 44 }}
+              style={{ minWidth: 48, paddingTop: 4 }}
             >
               {({ isActive }) => (
                 <>
-                  {/* icon with pop animation */}
                   <span
                     style={{
-                      display:    "flex",
-                      alignItems: "center",
+                      display:        "flex",
+                      alignItems:     "center",
                       justifyContent: "center",
-                      transition: "transform 0.28s cubic-bezier(0.34,1.56,0.64,1)",
-                      transform:  isActive ? "translateY(-3px) scale(1.15)" : "translateY(0) scale(1)",
+                      transition:     "transform 0.30s cubic-bezier(0.34,1.56,0.64,1)",
+                      transform:      isActive ? "translateY(-2px) scale(1.14)" : "translateY(0) scale(1)",
                     }}
                   >
                     <Icon
@@ -147,15 +165,13 @@ export default function BottomNav() {
                       }}
                     />
                   </span>
-
-                  {/* label fade + slide */}
                   <span
                     style={{
                       fontSize:   12,
                       color:      isActive ? "#28a055" : "#8d8d8d",
                       fontWeight: isActive ? 600 : 400,
-                      transition: "color 0.2s ease, font-weight 0.2s ease, transform 0.28s cubic-bezier(0.34,1.56,0.64,1)",
-                      transform:  isActive ? "translateY(-2px)" : "translateY(0)",
+                      transition: "color 0.2s ease, transform 0.30s cubic-bezier(0.34,1.56,0.64,1)",
+                      transform:  isActive ? "translateY(-1px)" : "translateY(0)",
                     }}
                   >
                     {label}
