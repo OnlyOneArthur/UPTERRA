@@ -9,6 +9,7 @@ import MarketDetail from "./pages/MarketDetail";
 import Cart from "./pages/Cart";
 import Pesanan from "./pages/Pesanan";
 import ProductChat from "./pages/ProductChat";
+import MapView from "./pages/MapView";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/chat/:id" element={<ProductChat />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/pesanan" element={<Pesanan />} />
+        <Route path="/map" element={<MapView />} />
       </Routes>
     </BrowserRouter>
   );
