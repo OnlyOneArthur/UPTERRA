@@ -1,31 +1,30 @@
 /* ========================================
-   scan.css — UPTERRA Scan Page Styles
+   scan.css — UPTERRA Scan Page
    ======================================== */
 
-/* ---- Root ---- */
+/* Root: isi penuh layar, tidak ada overflow */
 .sp-root {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  width: 100vw;
-  max-width: 100vw;
-  background: #111;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
   overflow: hidden;
-  position: relative;
+  display: block;
 }
 
 /* ========================================
-   CAMERA MODE
+   CAMERA MODE — video benar-benar full screen
    ======================================== */
 .sp-cam-root {
-  position: relative;
-  width: 100vw;
-  height: 100dvh;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #000;
 }
 
-/* VIDEO: isi seluruh layar, crop kalau perlu */
 .sp-video {
   position: absolute;
   inset: 0;
@@ -53,70 +52,82 @@
 .sp-no-cam p { color: #ccc; font-size: 14px; max-width: 240px; }
 .sp-no-cam svg { color: #888; }
 
-/* ---- Top bar: mode toggle + status ---- */
+/* ---- Top bar: tengah atas, di atas video ---- */
 .sp-top-bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  padding: 16px 16px 0;
+  padding: 14px 16px 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   pointer-events: none;
+  /* gradient gelap agar elemen terbaca di atas video */
+  background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 100%);
+  padding-bottom: 32px;
 }
 .sp-top-bar > * { pointer-events: auto; }
-.sp-top-bar--light { position: relative; top: unset; left: unset; right: unset; display: flex; justify-content: center; padding: 16px 0 0; }
+
+/* Light mode (voice) */
+.sp-top-bar--light {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 0;
+  background: none;
+}
 
 /* Status badge */
 .sp-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   color: #fff;
-  font-size: 12px;
-  padding: 4px 12px;
+  font-size: 11px;
+  padding: 3px 11px;
   border-radius: 999px;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 .sp-status-dot {
-  width: 7px; height: 7px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sp-status-dot.live { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.sp-status-dot.live    { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
 .sp-status-dot.connecting { background: #facc15; animation: sp-pulse 1s infinite; }
-.sp-status-dot.idle { background: #6b7280; }
+.sp-status-dot.idle    { background: #6b7280; }
 
-/* Stop button */
+/* Stop button — pojok kanan atas */
 .sp-stop-btn {
   position: absolute;
-  top: 20px;
+  top: 16px;
   right: 16px;
   display: flex;
   align-items: center;
   gap: 5px;
-  background: rgba(239,68,68,0.88);
+  background: rgba(239,68,68,0.82);
   color: #fff;
   border: none;
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 12px;
+  padding: 5px 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   z-index: 25;
   backdrop-filter: blur(4px);
 }
 
-/* Gallery */
+/* Galeri — pojok kanan bawah, di atas bottom nav */
 .sp-gallery-wrap {
   position: absolute;
-  bottom: 92px;
+  bottom: 96px;
   right: 16px;
   z-index: 20;
 }
@@ -124,129 +135,109 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #fff;
   border: none;
   border-radius: 999px;
-  padding: 7px 14px;
+  padding: 6px 13px;
   font-size: 12px;
   cursor: pointer;
 }
 
-/* ---- Error toast — cantik, bukan raw teks ---- */
+/* ---- Error toast: discreet, tidak expose nama service ---- */
 .sp-error-toast {
   position: absolute;
-  top: 100px;
-  left: 12px;
-  right: 12px;
+  top: 90px;
+  left: 16px;
+  right: 16px;
   z-index: 30;
-  background: rgba(20, 10, 10, 0.92);
+  background: rgba(15,15,15,0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(239,68,68,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   animation: sp-fade-in 0.25s ease;
-  max-width: 480px;
-  margin: 0 auto;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .sp-error-toast-icon {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin-top: 1px;
-  color: #f87171;
+  color: #f97316;
+  width: 18px;
+  height: 18px;
 }
-.sp-error-toast-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.sp-error-toast-body { flex: 1; }
 .sp-error-toast-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: #fca5a5;
-  margin: 0;
+  color: #fdba74;
+  margin: 0 0 2px;
+  line-height: 1.3;
 }
 .sp-error-toast-msg {
-  font-size: 12px;
-  color: #fecaca;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
   margin: 0;
-  line-height: 1.45;
-  opacity: 0.85;
+  line-height: 1.4;
 }
 .sp-error-toast-dismiss {
-  flex-shrink: 0;
   background: none;
   border: none;
-  color: #9ca3af;
+  color: rgba(255,255,255,0.4);
   cursor: pointer;
   padding: 2px;
   border-radius: 4px;
-  transition: color 0.15s;
+  flex-shrink: 0;
 }
 .sp-error-toast-dismiss:hover { color: #fff; }
 
-/* Camera error banner */
-.sp-cam-error {
-  position: absolute;
-  top: 100px;
-  left: 16px; right: 16px;
-  background: rgba(239,68,68,0.85);
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13px;
-  z-index: 15;
-}
-
-/* ---- Caption overlay ala Gemini ---- */
+/* ---- Caption overlay (hasil AI) ---- */
 .sp-caption-overlay {
   position: absolute;
-  bottom: 92px;
+  bottom: 96px;
   left: 16px;
-  right: 16px;
+  right: 72px; /* beri ruang galeri */
   z-index: 20;
   animation: sp-fade-in 0.25s ease;
   pointer-events: none;
 }
 .sp-caption-inner {
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0,0,0,0.68);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 14px;
-  padding: 12px 16px;
-  border: 1px solid rgba(255,255,255,0.1);
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
 }
 .sp-caption-label {
   display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #4ade80;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .sp-caption-text {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: #fff;
   margin: 0;
-  max-width: 100%;
 }
 
-/* ---- Result panel ---- */
+/* ---- Result card (detection) ---- */
 .sp-result-panel {
   position: absolute;
-  bottom: 92px;
+  bottom: 90px;
   left: 0; right: 0;
-  max-height: 40vh;
+  max-height: 38vh;
   overflow-y: auto;
   padding: 0 12px 8px;
   z-index: 12;
@@ -259,11 +250,13 @@
    VOICE MODE
    ======================================== */
 .sp-voice-root {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   background: #f5f5f0;
   overflow: hidden;
+  padding-bottom: 80px; /* space for BottomNav */
 }
 
 .sp-voice-body {
@@ -285,7 +278,7 @@
   margin: 0;
 }
 
-/* Mic button */
+/* Mic */
 .sp-mic-btn {
   position: relative;
   width: 88px; height: 88px;
@@ -300,10 +293,10 @@
   flex-shrink: 0;
 }
 .sp-mic-btn:active { transform: scale(0.96); }
-.sp-mic-btn--active { background: #d1fae5; }
-.sp-mic-btn--speaking { background: #bbf7d0; }
+.sp-mic-btn--active    { background: #d1fae5; }
+.sp-mic-btn--speaking  { background: #bbf7d0; }
 .sp-mic-btn--ai-speaking { background: #dbeafe; }
-.sp-mic-btn--loading { background: #fef9c3; }
+.sp-mic-btn--loading   { background: #fef9c3; }
 .sp-mic-icon { color: #16a34a; z-index: 1; }
 
 /* Wave rings */
@@ -321,7 +314,7 @@
 .sp-wave-2.sp-wave--active { animation-delay: 0.3s; }
 .sp-wave-3.sp-wave--active { animation-delay: 0.6s; }
 
-/* Caption di mode suara */
+/* Caption suara */
 .sp-voice-caption {
   width: 100%;
   max-width: 360px;
@@ -332,11 +325,7 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   animation: sp-fade-in 0.25s ease;
 }
-.sp-voice-caption .sp-caption-text {
-  color: #1a1a1a;
-  font-size: 14px;
-  line-height: 1.55;
-}
+.sp-voice-caption .sp-caption-text { color: #1a1a1a; font-size: 14px; line-height: 1.55; }
 
 .sp-voice-tap-hint {
   font-size: 13px;
@@ -345,27 +334,22 @@
   margin: 0;
 }
 
-/* Voice error box */
+/* Voice error */
 .sp-voice-error {
   width: 100%;
   max-width: 360px;
-  background: #fff0f0;
-  border: 1px solid #fca5a5;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
   border-radius: 12px;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.sp-voice-error p {
-  font-size: 13px;
-  color: #dc2626;
-  text-align: center;
-  margin: 0;
-}
+.sp-voice-error p { font-size: 13px; color: #c2410c; text-align: center; margin: 0; }
 
 /* ========================================
-   SHARED: Chat bubbles, chips, text input
+   SHARED: Chat bubbles, text input
    ======================================== */
 .sp-chat-log, .sp-voice-chat {
   display: flex;
@@ -383,70 +367,41 @@
   animation: sp-fade-in 0.2s ease;
 }
 .sp-bubble--user { align-self: flex-end; align-items: flex-end; }
-.sp-bubble--ai { align-self: flex-start; align-items: flex-start; }
+.sp-bubble--ai   { align-self: flex-start; align-items: flex-start; }
 
 .sp-bubble--user p {
-  background: #16a34a;
-  color: #fff;
+  background: #16a34a; color: #fff;
   border-radius: 16px 16px 4px 16px;
-  padding: 9px 13px;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
+  padding: 9px 13px; font-size: 14px; line-height: 1.5; margin: 0;
 }
 .sp-bubble--ai p {
-  background: #fff;
-  color: #1a1a1a;
+  background: #fff; color: #1a1a1a;
   border-radius: 16px 16px 16px 4px;
-  padding: 9px 13px;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
+  padding: 9px 13px; font-size: 14px; line-height: 1.5; margin: 0;
   border: 1px solid #e5e7eb;
 }
 
 .sp-chip-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #9ca3af;
-  padding: 0 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: #9ca3af; padding: 0 4px;
 }
 .sp-chip-ai { color: #16a34a; }
 
 /* Text input */
 .sp-text-fallback {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  max-width: 360px;
+  display: flex; gap: 8px; width: 100%; max-width: 360px;
 }
-.sp-text-always {
-  margin-top: auto;
-  padding-top: 8px;
-}
+.sp-text-always { margin-top: auto; padding-top: 8px; }
 .sp-text-input {
-  flex: 1;
-  border: 1.5px solid #d1d5db;
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 14px;
-  background: #fff;
-  outline: none;
-  transition: border-color 0.18s;
+  flex: 1; border: 1.5px solid #d1d5db; border-radius: 10px;
+  padding: 9px 12px; font-size: 14px; background: #fff;
+  outline: none; transition: border-color 0.18s;
 }
 .sp-text-input:focus { border-color: #16a34a; }
 .sp-text-send {
-  background: #16a34a;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+  background: #16a34a; color: #fff; border: none;
+  border-radius: 10px; padding: 9px 16px; font-size: 14px;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
 }
 .sp-text-send:active { background: #15803d; }
 
@@ -454,18 +409,16 @@
    ANIMATIONS
    ======================================== */
 @keyframes sp-ring {
-  0% { transform: scale(1); opacity: 0.5; }
+  0%   { transform: scale(1); opacity: 0.5; }
   100% { transform: scale(1.4); opacity: 0; }
 }
 @keyframes sp-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50%  { opacity: 0.4; }
 }
 @keyframes sp-fade-in {
   from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes sp-spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes sp-spin { to { transform: rotate(360deg); } }
 .sp-spin { animation: sp-spin 0.8s linear infinite; }
