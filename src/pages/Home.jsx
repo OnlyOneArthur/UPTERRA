@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Camera, ChevronRight, ScanLine } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
 import loginUpterra from "../assets/images/profile.svg";
@@ -79,6 +80,7 @@ const dropPoints = [
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("Anorganik");
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-[#f6f6f4] font-poppins">
@@ -139,11 +141,14 @@ export default function Home() {
                 Lapor Tumpukan Sampah
               </h4>
               <p className="mt-1 text-[10px] text-[#8f8f8f]">
-                Foto & kirim lokasi real-time
+                Foto &amp; kirim lokasi real-time
               </p>
             </div>
 
-            <button className="inline-flex items-center gap-2 rounded-full bg-[#7fc88f] px-4 py-3 text-xs font-medium text-white">
+            <button
+              onClick={() => navigate("/lapor-sampah")}
+              className="inline-flex items-center gap-2 rounded-full bg-[#7fc88f] px-4 py-3 text-xs font-medium text-white active:bg-[#5db078] transition-colors"
+            >
               <Camera size={14} />
               Lapor sekarang
             </button>
@@ -252,7 +257,7 @@ export default function Home() {
         <section className="mt-6">
           <div className="flex items-center justify-between">
             <h3 className="text-[16px] font-semibold text-[#303030]">
-              Rekomendasi Produk Bu’
+              Rekomendasi Produk Bu'
             </h3>
             <button className="text-sm font-semibold text-[#2d9b57]">
               Lihat Semua
