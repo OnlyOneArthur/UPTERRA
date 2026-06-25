@@ -15,60 +15,82 @@ const DOM_ORDER = navItems
   .filter((i) => i !== null);
 
 export default function BottomNav() {
-  const location  = useLocation();
-  const navRef    = useRef(null);
-  const itemRefs  = useRef([]);
-  const pillRef   = useRef(null);
-  // track whether we've done the initial snap
-  const readyRef  = useRef(false);
+  const location   = useLocation();
+  const navRef     = useRef(null);
+  const itemRefs   = useRef([]);
+  const pillRef    = useRef(null);
+  const shineRef   = useRef(null);
+  const readyRef   = useRef(false);
 
   const nonCenterItems = navItems.filter((n) => !n.center);
   const activeIndex    = nonCenterItems.findIndex((n) =>
     location.pathname.startsWith(n.to)
   );
 
+  // iOS spring easing — matches UIKit's spring feel
+  const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+  const DURATION = "0.44s";
+
   function movePill(animated) {
     if (activeIndex === -1) return;
-    const domIdx  = DOM_ORDER[activeIndex];
-    const el      = itemRefs.current[domIdx];
-    const nav     = navRef.current;
-    const pill    = pillRef.current;
+    const domIdx = DOM_ORDER[activeIndex];
+    const el     = itemRefs.current[domIdx];
+    const nav    = navRef.current;
+    const pill   = pillRef.current;
+    const shine  = shineRef.current;
     if (!el || !nav || !pill) return;
 
     const navRect = nav.getBoundingClientRect();
     const elRect  = el.getBoundingClientRect();
-    const pillW   = Math.max(elRect.width + 28, 76);
+    const pillW   = Math.max(elRect.width + 32, 80);
     const left    = elRect.left - navRect.left + elRect.width / 2 - pillW / 2;
 
-    // Toggle transition via attribute — avoids React re-render race
     if (animated) {
+      // iOS spring slide for position + width
       pill.style.transition =
-        "left 0.42s cubic-bezier(0.34,1.28,0.64,1), " +
-        "width 0.42s cubic-bezier(0.34,1.28,0.64,1), " +
-        "opacity 0.18s ease";
+        `left ${DURATION} ${SPRING}, ` +
+        `width ${DURATION} ${SPRING}, ` +
+        `opacity 0.20s ease, ` +
+        `transform ${DURATION} ${SPRING}`;
+
+      if (shine) {
+        shine.style.transition = `opacity 0.20s ease`;
+      }
+
+      // Subtle squeeze-then-expand on the pill (like iOS tab bar)
+      pill.style.transform = "scaleY(0.88) scaleX(0.94)";
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          pill.style.transform = "scaleY(1) scaleX(1)";
+        });
+      });
     } else {
       pill.style.transition = "none";
+      pill.style.transform  = "scaleY(1) scaleX(1)";
     }
 
     pill.style.left    = left + "px";
     pill.style.width   = pillW + "px";
     pill.style.opacity = "1";
+
+    // Flicker the shine highlight like a real glass reflection
+    if (shine && animated) {
+      shine.style.opacity = "0.85";
+      setTimeout(() => { shine.style.opacity = "0.45"; }, 180);
+    }
   }
 
-  // Runs on every pathname change (including initial mount)
   useEffect(() => {
     if (!readyRef.current) {
-      // Mount: wait for 2 frames so flex layout is measured, then SNAP
       let r2;
       const r1 = requestAnimationFrame(() => {
         r2 = requestAnimationFrame(() => {
-          movePill(false);          // snap, no animation
+          movePill(false);
           readyRef.current = true;
         });
       });
       return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
     }
-    // Subsequent navigations: SLIDE
     movePill(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
@@ -78,37 +100,69 @@ export default function BottomNav() {
       ref={navRef}
       className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2"
       style={{
-        background:           "rgba(255,255,255,0.72)",
-        backdropFilter:       "blur(24px) saturate(180%)",
-        WebkitBackdropFilter: "blur(24px) saturate(180%)",
-        borderTop:            "1px solid rgba(255,255,255,0.5)",
+        // iOS frosted glass — same as Control Center / Tab Bar
+        background:           "rgba(249,249,249,0.78)",
+        backdropFilter:       "blur(28px) saturate(200%) brightness(1.08)",
+        WebkitBackdropFilter: "blur(28px) saturate(200%) brightness(1.08)",
+        borderTop:            "0.5px solid rgba(255,255,255,0.62)",
         borderRadius:         "28px 28px 0 0",
-        boxShadow:            "0 -6px 32px rgba(0,0,0,0.10), 0 -1px 0 rgba(255,255,255,0.6) inset",
-        padding:              "10px 20px 20px",
+        // Layered shadow like iOS floating panels
+        boxShadow:
+          "0 -1px 0 rgba(0,0,0,0.08), " +
+          "0 -6px 32px rgba(0,0,0,0.08), " +
+          "inset 0 1px 0 rgba(255,255,255,0.70)",
+        padding: "10px 20px 20px",
       }}
     >
-      {/* Glass pill — position controlled directly via ref, NOT React state */}
+      {/* ── Glass pill indicator ── */}
       <span
         ref={pillRef}
         aria-hidden="true"
         style={{
-          position:             "absolute",
-          top:                  8,
-          left:                 "-999px",   // hidden off-screen until first snap
-          width:                76,
-          height:               54,
-          borderRadius:         16,
-          background:           "rgba(40,160,85,0.11)",
-          border:               "1.5px solid rgba(40,160,85,0.24)",
-          backdropFilter:       "blur(10px) saturate(160%)",
-          WebkitBackdropFilter: "blur(10px) saturate(160%)",
-          boxShadow:            "0 2px 12px rgba(40,160,85,0.10), inset 0 1px 0 rgba(255,255,255,0.6)",
-          opacity:              0,
-          transition:           "none",
-          transform:            "translateZ(0)",
-          pointerEvents:        "none",
+          position:    "absolute",
+          top:         8,
+          left:        "-999px",   // hidden until first snap
+          width:       80,
+          height:      54,
+          borderRadius: 18,
+          // Pill glass fill
+          background:
+            "linear-gradient(160deg, rgba(47,168,87,0.18) 0%, rgba(40,160,85,0.09) 100%)",
+          border:               "1px solid rgba(47,168,87,0.30)",
+          backdropFilter:       "blur(14px) saturate(180%)",
+          WebkitBackdropFilter: "blur(14px) saturate(180%)",
+          // iOS-style inner glow + drop shadow
+          boxShadow:
+            "0 3px 14px rgba(47,168,87,0.18), " +
+            "inset 0 1.5px 0 rgba(255,255,255,0.70), " +
+            "inset 0 -1px 0 rgba(47,168,87,0.12)",
+          opacity:       0,
+          transition:    "none",
+          transform:     "scaleY(1) scaleX(1)",
+          transformOrigin: "center center",
+          pointerEvents: "none",
+          overflow:      "hidden",
         }}
-      />
+      >
+        {/* ── Shine highlight — the glassy sheen on top ── */}
+        <span
+          ref={shineRef}
+          aria-hidden="true"
+          style={{
+            position:   "absolute",
+            top:        0,
+            left:       "10%",
+            width:      "80%",
+            height:     "40%",
+            borderRadius: "0 0 50% 50%",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0) 100%)",
+            opacity:    0.45,
+            transition: "opacity 0.20s ease",
+            pointerEvents: "none",
+          }}
+        />
+      </span>
 
       <div className="flex items-end justify-between relative">
         {navItems.map(({ to, label, icon: Icon, center }, idx) => {
@@ -119,7 +173,7 @@ export default function BottomNav() {
                   <>
                     <div
                       style={{
-                        transition: "transform 0.25s cubic-bezier(0.34,1.26,0.64,1)",
+                        transition: `transform 0.28s ${SPRING}`,
                         transform:  isActive ? "scale(1.12)" : "scale(1)",
                       }}
                       className={`flex h-16 w-16 items-center justify-center rounded-full ring-4 ring-white shadow-[0_10px_20px_rgba(47,168,87,0.35)] ${
@@ -128,7 +182,13 @@ export default function BottomNav() {
                     >
                       <Icon size={28} />
                     </div>
-                    <span className="mt-1 text-[12px]" style={{ color: isActive ? "#28a055" : "#8d8d8d", transition: "color 0.2s ease" }}>
+                    <span
+                      className="mt-1 text-[12px]"
+                      style={{
+                        color:      isActive ? "#28a055" : "#8d8d8d",
+                        transition: "color 0.2s ease",
+                      }}
+                    >
                       Scan
                     </span>
                   </>
@@ -152,8 +212,10 @@ export default function BottomNav() {
                       display:        "flex",
                       alignItems:     "center",
                       justifyContent: "center",
-                      transition:     "transform 0.30s cubic-bezier(0.34,1.56,0.64,1)",
-                      transform:      isActive ? "translateY(-2px) scale(1.14)" : "translateY(0) scale(1)",
+                      transition:     `transform 0.32s ${SPRING}`,
+                      transform:      isActive
+                        ? "translateY(-3px) scale(1.15)"
+                        : "translateY(0) scale(1)",
                     }}
                   >
                     <Icon
@@ -161,7 +223,7 @@ export default function BottomNav() {
                       style={{
                         color:      isActive ? "#28a055" : "#8d8d8d",
                         fill:       label === "Beranda" && isActive ? "currentColor" : "none",
-                        transition: "color 0.2s ease",
+                        transition: "color 0.22s ease",
                       }}
                     />
                   </span>
@@ -170,8 +232,12 @@ export default function BottomNav() {
                       fontSize:   12,
                       color:      isActive ? "#28a055" : "#8d8d8d",
                       fontWeight: isActive ? 600 : 400,
-                      transition: "color 0.2s ease, transform 0.30s cubic-bezier(0.34,1.56,0.64,1)",
-                      transform:  isActive ? "translateY(-1px)" : "translateY(0)",
+                      letterSpacing: isActive ? "-0.2px" : "0",
+                      transition:
+                        `color 0.22s ease, ` +
+                        `font-weight 0.22s ease, ` +
+                        `transform 0.32s ${SPRING}`,
+                      transform: isActive ? "translateY(-2px)" : "translateY(0)",
                     }}
                   >
                     {label}
