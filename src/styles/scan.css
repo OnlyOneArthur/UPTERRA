@@ -2,6 +2,12 @@
    UPTERRA — Scan Page Styles
    ========================================== */
 
+html, body, #root {
+  margin: 0; padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Root */
 .sp-root {
   position: relative;
@@ -13,7 +19,66 @@
   flex-direction: column;
   overflow: hidden;
   font-family: 'Inter', sans-serif;
+  background: #0d0d0d;
 }
+
+/* ====== AUDIO UNLOCK OVERLAY ====== */
+.sp-unlock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sp-unlock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 28px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px;
+  text-align: center;
+  max-width: 280px;
+}
+.sp-unlock-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #22c55e;
+}
+.sp-unlock-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.sp-unlock-desc {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.5;
+}
+.sp-unlock-btn {
+  margin-top: 8px;
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.sp-unlock-btn:active { opacity: 0.8; transform: scale(0.97); }
 
 /* ====== CAMERA MODE ====== */
 .sp-cam-root {
@@ -21,24 +86,23 @@
   flex: 1;
   overflow: hidden;
   background: #0d0d0d;
-  /* bottom nav height ~82px */
   margin-bottom: 82px;
 }
 
 .sp-video {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 100%; min-height: 100%;
+  width: auto; height: auto;
   object-fit: cover;
   display: block;
 }
 
 .sp-no-cam {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   gap: 12px;
   background: #111;
   color: rgba(255,255,255,0.4);
@@ -48,8 +112,7 @@
 /* Top bar */
 .sp-top-bar {
   position: absolute;
-  top: 16px;
-  left: 50%;
+  top: 16px; left: 50%;
   transform: translateX(-50%);
   z-index: 20;
 }
@@ -66,16 +129,13 @@
   gap: 2px;
 }
 .smt-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: flex; align-items: center; gap: 6px;
   padding: 6px 14px;
   border-radius: 999px;
   border: none;
   background: transparent;
   color: rgba(255,255,255,0.55);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 13px; font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -89,25 +149,18 @@
   background: #6b7280;
   transition: background 0.2s;
 }
-.smt-dot.on {
-  background: #22c55e;
-  box-shadow: 0 0 5px #22c55e;
-}
+.smt-dot.on { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
 
 /* Status badge */
 .sp-status-badge {
   position: absolute;
-  top: 16px;
-  right: 14px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  top: 16px; right: 14px;
+  display: flex; align-items: center; gap: 6px;
   background: rgba(0,0,0,0.6);
   backdrop-filter: blur(8px);
   border-radius: 999px;
   padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12px; font-weight: 500;
   color: #fff;
   z-index: 20;
 }
@@ -115,17 +168,32 @@
   width: 8px; height: 8px;
   border-radius: 50%;
 }
-.sp-status-dot.live {
-  background: #22c55e;
-  animation: dot-pulse 1.5s infinite;
-}
-.sp-status-dot.connecting {
-  background: #f59e0b;
-  animation: dot-pulse 0.8s infinite;
-}
+.sp-status-dot.live     { background: #22c55e; animation: dot-pulse 1.5s infinite; }
+.sp-status-dot.speaking { background: #3b82f6; animation: dot-pulse 0.6s infinite; }
+.sp-status-dot.connecting { background: #f59e0b; animation: dot-pulse 0.8s infinite; }
+.sp-status-dot.idle     { background: #6b7280; }
 @keyframes dot-pulse {
   0%, 100% { opacity:1; transform:scale(1); }
   50%       { opacity:0.5; transform:scale(1.4); }
+}
+
+/* Caption overlay — teks AI muncul di atas video */
+.sp-caption-overlay {
+  position: absolute;
+  bottom: 80px; left: 12px; right: 12px;
+  z-index: 25;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 12px 16px;
+  pointer-events: none;
+}
+.sp-caption-overlay p {
+  margin: 0;
+  font-size: 14px;
+  color: #fff;
+  line-height: 1.5;
+  text-align: center;
 }
 
 /* Scan frame brackets */
@@ -145,10 +213,7 @@
 .sf-tr { top:14%; right:8%; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
 .sf-bl { bottom:24%; left:8%; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
 .sf-br { bottom:24%; right:8%; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-.scan-frame.scanning .sf-corner {
-  border-color: #22c55e;
-  transition: border-color 0.3s;
-}
+.scan-frame.scanning .sf-corner { border-color: #22c55e; transition: border-color 0.3s; }
 .sf-scan-line {
   position: absolute;
   left:8%; right:8%;
@@ -167,15 +232,12 @@
 /* Gallery button */
 .sp-gallery-wrap {
   position: absolute;
-  bottom: 20px;
-  left: 50%;
+  bottom: 20px; left: 50%;
   transform: translateX(-50%);
   z-index: 20;
 }
 .sp-gallery-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,0.14);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -183,29 +245,22 @@
   color: #fff;
   border-radius: 999px;
   padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 14px; font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.2s;
 }
-.sp-gallery-btn:active {
-  background: rgba(255,255,255,0.28);
-  transform: scale(0.97);
-}
+.sp-gallery-btn:active { background: rgba(255,255,255,0.28); transform: scale(0.97); }
 
-/* Result panel (camera mode overlay) */
+/* Result panel */
 .sp-result-panel {
   position: absolute;
-  bottom: 70px;
-  left:0; right:0;
+  bottom: 70px; left:0; right:0;
   max-height: 42%;
   overflow-y: auto;
   padding: 0 12px 12px;
   z-index: 30;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: flex; flex-direction: column; gap: 8px;
   pointer-events: none;
 }
 .sp-result-panel > * { pointer-events: auto; }
@@ -214,31 +269,26 @@
   border: 1px solid rgba(239,68,68,0.4);
   border-radius: 12px;
   padding: 10px 14px;
-  font-size: 13px;
-  color: #fca5a5;
+  font-size: 13px; color: #fca5a5;
 }
 .sp-transcript {
   background: rgba(255,255,255,0.08);
   border-radius: 12px;
   padding: 10px 14px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.75);
+  font-size: 13px; color: rgba(255,255,255,0.75);
 }
 .sp-ai-bubble {
   background: rgba(34,197,94,0.1);
   border: 1px solid rgba(34,197,94,0.25);
   border-radius: 12px;
   padding: 10px 14px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.92);
+  font-size: 13px; color: rgba(255,255,255,0.92);
   white-space: pre-wrap;
 }
 .sp-chip-label {
   display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
   color: rgba(255,255,255,0.45);
   margin-bottom: 4px;
 }
@@ -248,13 +298,10 @@
 .src-card {
   background: rgba(0,0,0,0.75);
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 16px;
   padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 .src-header   { display:flex; align-items:center; gap:8px; }
 .src-dot      { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
@@ -270,22 +317,17 @@
 /* ====== VOICE MODE (LIGHT) ====== */
 .sp-voice-root {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
   background: #f5f5f0;
   margin-bottom: 82px;
-  position: relative;
-  overflow: hidden;
+  position: relative; overflow: hidden;
 }
 
-/* Mode toggle for light bg */
 .sp-top-bar--light .smt-root {
   background: rgba(0,0,0,0.07);
   border-color: rgba(0,0,0,0.1);
 }
-.sp-top-bar--light .smt-option {
-  color: rgba(0,0,0,0.45);
-}
+.sp-top-bar--light .smt-option { color: rgba(0,0,0,0.45); }
 .sp-top-bar--light .smt-option.active {
   background: rgba(0,0,0,0.1);
   color: #1a1a1a;
@@ -293,36 +335,25 @@
 
 .sp-voice-body {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
   padding: 80px 24px 24px;
-  gap: 8px;
-  overflow-y: auto;
+  gap: 8px; overflow-y: auto;
 }
 
 .sp-voice-hint {
-  font-size: 15px;
-  color: #555;
-  text-align: center;
-  max-width: 240px;
-  line-height: 1.5;
-  margin-bottom: 24px;
+  font-size: 15px; color: #555;
+  text-align: center; max-width: 240px;
+  line-height: 1.5; margin-bottom: 24px;
 }
 
-/* Mic button + wave rings */
+/* Mic + wave rings */
 .sp-mic-wrap {
   position: relative;
-  width: 140px;
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 140px; height: 140px;
+  display: flex; align-items: center; justify-content: center;
   margin-bottom: 16px;
 }
-
-/* Wave rings */
 .sp-wave {
   position: absolute;
   border-radius: 50%;
@@ -332,46 +363,52 @@
 .sp-wave-1 { width:120px; height:120px; animation-delay:0s; }
 .sp-wave-2 { width:140px; height:140px; animation-delay:0.4s; }
 .sp-wave-3 { width:160px; height:160px; animation-delay:0.8s; }
-
 @keyframes wave-expand {
   0%   { transform:scale(0.85); opacity:0.7; }
   100% { transform:scale(1.4);  opacity:0; }
 }
 
-/* Mic button */
 .sp-mic-btn {
-  position: relative;
-  z-index: 2;
-  width: 96px;
-  height: 96px;
+  position: relative; z-index: 2;
+  width: 96px; height: 96px;
   border-radius: 50%;
   background: #e8f5e9;
   border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   color: #22c55e;
   transition: all 0.25s ease;
   box-shadow: 0 4px 20px rgba(34,197,94,0.18);
 }
-
 .sp-mic-btn--active {
-  background: #22c55e;
-  color: #fff;
+  background: #22c55e; color: #fff;
   box-shadow: 0 6px 28px rgba(34,197,94,0.45);
   transform: scale(1.05);
 }
-
+.sp-mic-btn--speaking {
+  background: #3b82f6; color: #fff;
+  box-shadow: 0 6px 28px rgba(59,130,246,0.45);
+  transform: scale(1.05);
+}
 .sp-mic-btn--loading {
-  background: #f0fdf4;
-  color: #f59e0b;
+  background: #f0fdf4; color: #f59e0b;
+}
+
+/* Caption suara */
+.sp-voice-caption {
+  font-size: 15px; color: #1a1a1a;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.55;
+  font-style: italic;
+  background: rgba(34,197,94,0.08);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin: 4px 0;
 }
 
 .sp-voice-tap-hint {
-  font-size: 14px;
-  color: #888;
-  text-align: center;
-  margin-top: 4px;
+  font-size: 14px; color: #888;
+  text-align: center; margin-top: 4px;
 }
 
 .sp-voice-error {
@@ -379,59 +416,37 @@
   border: 1px solid #fecaca;
   border-radius: 12px;
   padding: 10px 16px;
-  font-size: 13px;
-  color: #dc2626;
-  text-align: center;
-  margin-top: 12px;
-  max-width: 320px;
-  width: 100%;
+  font-size: 13px; color: #dc2626;
+  text-align: center; margin-top: 12px;
+  max-width: 320px; width: 100%;
 }
 
 /* Voice chat bubbles */
 .sp-voice-chat {
-  width: 100%;
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column;
+  gap: 10px; margin-top: 20px;
 }
-
 .sp-bubble {
   border-radius: 16px;
   padding: 12px 16px;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 14px; line-height: 1.55;
 }
-
 .sp-bubble--user {
   background: #fff;
   border: 1px solid #e5e7eb;
   color: #1a1a1a;
-  align-self: flex-end;
-  max-width: 85%;
+  align-self: flex-end; max-width: 85%;
 }
-
 .sp-bubble--ai {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #1a1a1a;
-  align-self: flex-start;
-  max-width: 85%;
+  align-self: flex-start; max-width: 85%;
 }
+.sp-bubble .sp-chip-label { color: #9ca3af; }
+.sp-bubble .sp-chip-ai    { color: #16a34a; }
 
-.sp-bubble .sp-chip-label {
-  color: #9ca3af;
-}
-
-.sp-bubble .sp-chip-ai {
-  color: #16a34a;
-}
-
-/* Shared spin animation */
-.sp-spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+/* Spin */
+.sp-spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
