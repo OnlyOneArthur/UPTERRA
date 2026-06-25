@@ -38,12 +38,12 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="-mt-8 min-h-[70vh] rounded-t-[34px] bg-[#f6f6f6] px-6 pt-6 pb-10">
-          <div className="flex flex-col items-center">
+        <div className="-mt-8 min-h-[70vh] rounded-t-[34px] bg-[#f6f6f6] px-6 pt-8 pb-10 overflow-visible">
+          <div className="flex w-full flex-col items-center justify-center py-4">
             <img
               src={trashCan}
               alt="Trash can"
-              className="mb-3 h-25 w-25 object-contain"
+              className="h-24 w-24 object-contain mx-auto"
             />
           </div>
 
