@@ -6,6 +6,29 @@ import BottomNav from '../components/layout/BottomNav';
 import { useScanAI } from '../hooks/useScanAI';
 import '../styles/scan.css';
 
+// ---- Error Toast Component ----
+function ErrorToast({ error, onDismiss }) {
+  if (!error) return null;
+  return (
+    <div className="sp-error-toast" role="alert">
+      <svg className="sp-error-toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <div className="sp-error-toast-body">
+        <p className="sp-error-toast-title">{error.title}</p>
+        <p className="sp-error-toast-msg">{error.msg}</p>
+      </div>
+      <button className="sp-error-toast-dismiss" onClick={onDismiss} aria-label="Tutup pesan error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -15,29 +38,22 @@ export default function ScanPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const cameraStreamRef = useRef(null);
+  const [dismissedError, setDismissedError] = useState(false);
 
   const {
-    sessionActive,
-    isConnecting,
-    isAIProcessing,
-    isAISpeaking,
-    isSpeaking,
-    messages,
-    caption,
-    detectionResult,
-    startSession,
-    stopSession,
-    sendVideoFrame,
-    sendTextMessage,
-    error,
-    voiceError,
+    sessionActive, isConnecting, isAIProcessing, isAISpeaking, isSpeaking,
+    messages, caption, detectionResult,
+    startSession, stopSession, sendVideoFrame, sendTextMessage,
+    error, voiceError,
   } = useScanAI();
+
+  // Reset dismissed saat error berubah
+  useEffect(() => { setDismissedError(false); }, [error]);
 
   // ---- Kamera stream ----
   useEffect(() => {
     if (mode !== 'camera') {
-      setCameraActive(false);
-      setCameraError(null);
+      setCameraActive(false); setCameraError(null);
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
       cameraStreamRef.current = null;
       return;
@@ -52,11 +68,7 @@ export default function ScanPage() {
       })
       .catch((err) => {
         setCameraActive(false);
-        setCameraError(
-          err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-            ? 'denied'
-            : 'unavailable'
-        );
+        setCameraError(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' ? 'denied' : 'unavailable');
       });
     return () => {
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -87,9 +99,7 @@ export default function ScanPage() {
   }, [mode, cameraActive, sendVideoFrame]);
 
   // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const handleGalleryPick = useCallback((e) => {
     const file = e.target.files[0];
@@ -101,8 +111,7 @@ export default function ScanPage() {
   }, [sendVideoFrame]);
 
   const handleModeChange = useCallback((newMode) => {
-    stopSession();
-    setMode(newMode);
+    stopSession(); setMode(newMode);
   }, [stopSession]);
 
   const handleMicTap = useCallback(() => {
@@ -111,20 +120,15 @@ export default function ScanPage() {
     else startSession('voice');
   }, [isConnecting, isAIProcessing, sessionActive, stopSession, startSession]);
 
-  // ---- Helpers UI ----
-  const statusLabel = isConnecting
-    ? 'Menghubungkan...'
-    : isAIProcessing
-    ? 'AI memproses...'
-    : sessionActive
-    ? 'AI Aktif'
+  // ---- Status label ----
+  const statusLabel = isConnecting ? 'Menghubungkan...'
+    : isAIProcessing ? 'AI memproses...'
+    : sessionActive ? 'AI Aktif'
     : 'Offline';
+  const statusClass = (isConnecting || isAIProcessing) ? 'connecting' : sessionActive ? 'live' : 'idle';
 
-  const statusClass = isConnecting || isAIProcessing
-    ? 'connecting'
-    : sessionActive
-    ? 'live'
-    : 'idle';
+  // Error yang ditampilkan (objek {title, msg})
+  const visibleError = !dismissedError && error ? error : null;
 
   return (
     <div className="sp-root">
@@ -132,6 +136,7 @@ export default function ScanPage() {
       {/* ====== MODE KAMERA ====== */}
       {mode === 'camera' && (
         <div className="sp-cam-root">
+          {/* Video full-screen */}
           <video
             ref={videoRef}
             autoPlay playsInline muted
@@ -139,6 +144,7 @@ export default function ScanPage() {
             style={{ display: cameraActive ? 'block' : 'none' }}
           />
 
+          {/* Placeholder kamera belum aktif */}
           {!cameraActive && (
             <div className="sp-no-cam">
               {cameraError === 'denied' ? (
@@ -155,18 +161,30 @@ export default function ScanPage() {
             </div>
           )}
 
+          {/* Scan frame overlay */}
           <ScanFrame active={sessionActive} />
 
+          {/* Top bar: mode toggle + status */}
           <div className="sp-top-bar">
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
+            <div className="sp-status-badge">
+              <span className={`sp-status-dot ${statusClass}`} />
+              {statusLabel}
+            </div>
           </div>
 
-          <div className="sp-status-badge">
-            <span className={`sp-status-dot ${statusClass}`} />
-            {statusLabel}
-          </div>
+          {/* Stop button */}
+          {sessionActive && (
+            <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan sesi AI">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              Stop
+            </button>
+          )}
 
-          {/* Caption overlay ala Gemini — muncul saat AI bicara */}
+          {/* Error toast — cantik dan bisa di-dismiss */}
+          <ErrorToast error={visibleError} onDismiss={() => setDismissedError(true)} />
+
+          {/* Caption overlay */}
           {caption && (
             <div className="sp-caption-overlay">
               <div className="sp-caption-inner">
@@ -176,38 +194,25 @@ export default function ScanPage() {
             </div>
           )}
 
-          {sessionActive && (
-            <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan sesi AI">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
-              Stop
-            </button>
-          )}
-
+          {/* Galeri */}
           <div className="sp-gallery-wrap">
-            <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()} aria-label="Pilih dari galeri">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               Pilih dari galeri
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryPick} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleGalleryPick}
+            />
           </div>
 
-          {error && <div className="sp-cam-error"><p>{error}</p></div>}
-
-          {/* Conversation log mode kamera */}
-          {(detectionResult || messages.length > 0) && (
+          {/* Detection result card */}
+          {detectionResult && (
             <div className="sp-result-panel">
-              {detectionResult && <ScanResultCard result={detectionResult} />}
-              <div className="sp-chat-log">
-                {messages.map((m) => (
-                  <div key={m.ts} className={`sp-bubble ${m.role === 'user' ? 'sp-bubble--user' : 'sp-bubble--ai'}`}>
-                    <span className={`sp-chip-label ${m.role === 'ai' ? 'sp-chip-ai' : ''}`}>
-                      {m.role === 'user' ? 'Kamu' : 'UPTERRA AI'}
-                    </span>
-                    <p>{m.text}</p>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
+              <ScanResultCard result={detectionResult} />
             </div>
           )}
         </div>
@@ -216,118 +221,105 @@ export default function ScanPage() {
       {/* ====== MODE SUARA ====== */}
       {mode === 'voice' && (
         <div className="sp-voice-root">
-          <div className="sp-top-bar sp-top-bar--light">
+          <div className="sp-top-bar--light">
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
 
           <div className="sp-voice-body">
-            <p className="sp-voice-hint">
-              {isAISpeaking
-                ? 'AI sedang menjawab...'
-                : isSpeaking
-                ? 'Mendengarkan kamu...'
-                : sessionActive
-                ? 'Ceritakan barang atau sampah yang mau diidentifikasi'
-                : isConnecting
-                ? 'Menghubungkan ke AI...'
-                : 'Ceritakan barang atau sampah yang mau diidentifikasi'}
-            </p>
+            {!sessionActive && !isConnecting && (
+              <p className="sp-voice-hint">Ketuk mic untuk mulai bicara dengan AI tentang sampah elektronik kamu</p>
+            )}
 
-            {/* Tombol mic */}
+            {/* Mic button */}
             <button
               className={[
                 'sp-mic-btn',
-                sessionActive ? (isSpeaking ? 'sp-mic-btn--speaking' : isAISpeaking ? 'sp-mic-btn--ai-speaking' : 'sp-mic-btn--active') : '',
-                isConnecting ? 'sp-mic-btn--loading' : '',
-              ].join(' ')}
+                isSpeaking ? 'sp-mic-btn--speaking' : '',
+                isAISpeaking ? 'sp-mic-btn--ai-speaking' : '',
+                isConnecting || isAIProcessing ? 'sp-mic-btn--loading' : '',
+                sessionActive && !isSpeaking && !isAISpeaking && !isConnecting ? 'sp-mic-btn--active' : '',
+              ].filter(Boolean).join(' ')}
               onClick={handleMicTap}
-              aria-label={sessionActive ? 'Hentikan sesi' : 'Mulai sesi AI'}
+              aria-label={sessionActive ? 'Hentikan sesi suara' : 'Mulai sesi suara'}
             >
-              {(sessionActive || isAISpeaking) && (
-                <>
-                  <span className={`sp-wave sp-wave-1 ${isSpeaking || isAISpeaking ? 'sp-wave--active' : ''}`} />
-                  <span className={`sp-wave sp-wave-2 ${isSpeaking || isAISpeaking ? 'sp-wave--active' : ''}`} />
-                  <span className={`sp-wave sp-wave-3 ${isSpeaking || isAISpeaking ? 'sp-wave--active' : ''}`} />
-                </>
+              {[1, 2, 3].map((n) => (
+                <span key={n} className={`sp-wave sp-wave-${n}${(isSpeaking || isAISpeaking) ? ' sp-wave--active' : ''}`} />
+              ))}
+              {isConnecting || isAIProcessing ? (
+                <svg className="sp-spin sp-mic-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              ) : (
+                <svg className="sp-mic-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
               )}
-              <span className="sp-mic-icon">
-                {isConnecting ? (
-                  <svg className="sp-spin" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                ) : (
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                  </svg>
-                )}
-              </span>
             </button>
 
-            {/* Caption ala Gemini video call — muncul di atas tombol */}
+            <p className="sp-voice-tap-hint">
+              {isConnecting ? 'Menghubungkan mikrofon...'
+                : isAIProcessing ? 'AI sedang berpikir...'
+                : isAISpeaking ? 'AI sedang menjawab...'
+                : isSpeaking ? 'Mendengarkan...'
+                : sessionActive ? 'Bicara sekarang'
+                : 'Ketuk untuk mulai'}
+            </p>
+
+            {/* Caption suara */}
             {caption && (
               <div className="sp-voice-caption">
-                <span className="sp-caption-label">UPTERRA AI</span>
                 <p className="sp-caption-text">{caption}</p>
               </div>
             )}
 
-            {isConnecting && <p className="sp-voice-tap-hint">Mohon tunggu...</p>}
-            {isAIProcessing && !isAISpeaking && (
-              <p className="sp-voice-tap-hint">AI sedang berpikir...</p>
-            )}
-
-            {voiceError && !isConnecting && (
+            {/* Voice error */}
+            {voiceError && (
               <div className="sp-voice-error">
                 <p>{voiceError}</p>
-                <form
-                  className="sp-text-fallback"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const val = e.target.msg.value.trim();
-                    if (val) { sendTextMessage(val); e.target.reset(); }
-                  }}
-                >
-                  <input name="msg" placeholder="Atau ketik pesan ke AI..." className="sp-text-input" />
-                  <button type="submit" className="sp-text-send">Kirim</button>
-                </form>
+                <button className="sp-text-send" style={{ alignSelf: 'center' }} onClick={() => { stopSession(); setTimeout(() => startSession('voice'), 200); }}>Coba Lagi</button>
               </div>
             )}
 
-            {/* Conversation log mode suara */}
-            {messages.length > 0 && (
-              <div className="sp-voice-chat">
-                {messages.map((m) => (
-                  <div key={m.ts} className={`sp-bubble ${m.role === 'user' ? 'sp-bubble--user' : 'sp-bubble--ai'}`}>
-                    <span className={`sp-chip-label ${m.role === 'ai' ? 'sp-chip-ai' : ''}`}>
-                      {m.role === 'user' ? 'Kamu' : 'UPTERRA AI'}
-                    </span>
-                    <p>{m.text}</p>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            )}
+            {/* Chat log */}
+            <div className="sp-voice-chat">
+              {messages.map((m, i) => (
+                <div key={i} className={`sp-bubble sp-bubble--${m.role === 'user' ? 'user' : 'ai'}`}>
+                  <span className={`sp-chip-label${m.role === 'ai' ? ' sp-chip-ai' : ''}`}>{m.role === 'user' ? 'Kamu' : 'UPTERRA AI'}</span>
+                  <p>{m.text}</p>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
 
-            {/* Input teks manual (selalu tampil di bawah) */}
-            {sessionActive && !voiceError && (
-              <form
-                className="sp-text-fallback sp-text-always"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const val = e.target.msg.value.trim();
-                  if (val) { sendTextMessage(val); e.target.reset(); }
-                }}
-              >
-                <input name="msg" placeholder="Atau ketik pesan ke AI..." className="sp-text-input" />
-                <button type="submit" className="sp-text-send">Kirim</button>
-              </form>
-            )}
+            {/* Text fallback */}
+            <div className="sp-text-fallback sp-text-always">
+              <TextInput onSend={sendTextMessage} disabled={isAIProcessing || isAISpeaking} />
+            </div>
           </div>
         </div>
       )}
 
       <BottomNav />
     </div>
+  );
+}
+
+// ---- Text Input Sub-component ----
+function TextInput({ onSend, disabled }) {
+  const [val, setVal] = useState('');
+  const submit = () => { if (val.trim()) { onSend(val.trim()); setVal(''); } };
+  return (
+    <>
+      <input
+        className="sp-text-input"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && submit()}
+        placeholder="Ketik pertanyaan..."
+        disabled={disabled}
+      />
+      <button className="sp-text-send" onClick={submit} disabled={disabled || !val.trim()}>Kirim</button>
+    </>
   );
 }
