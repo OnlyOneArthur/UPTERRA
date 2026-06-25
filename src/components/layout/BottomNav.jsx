@@ -15,68 +15,69 @@ const DOM_ORDER = navItems
   .filter((i) => i !== null);
 
 export default function BottomNav() {
-  const location  = useLocation();
-  const navRef    = useRef(null);
-  const itemRefs  = useRef([]);
+  const location = useLocation();
+  const navRef   = useRef(null);
+  const itemRefs = useRef([]);
 
   const nonCenterItems = navItems.filter((n) => !n.center);
   const activeIndex    = nonCenterItems.findIndex((n) =>
     location.pathname.startsWith(n.to)
   );
 
-  // pill CSS vars — we drive left/width via style, and toggle a class for transition
-  const [pillStyle, setPillStyle] = useState({
-    left:       -999,   // off-screen initially so it's invisible
-    width:      72,
-    opacity:    0,
-    transition: "none", // no transition on first paint
-  });
+  // pill state — left/width driven by measured DOM rects
+  const [pill, setPill] = useState({ left: -999, width: 72, opacity: 0 });
+  // separate flag so we can toggle CSS transition independently of pill position
+  const [enableTransition, setEnableTransition] = useState(false);
+  const snappedRef = useRef(false);
 
-  function computeAndSet(withTransition) {
-    if (activeIndex === -1) return;
+  function measure() {
+    if (activeIndex === -1) return null;
     const domIdx = DOM_ORDER[activeIndex];
     const el     = itemRefs.current[domIdx];
     const nav    = navRef.current;
-    if (!el || !nav) return;
-
+    if (!el || !nav) return null;
     const navRect = nav.getBoundingClientRect();
     const elRect  = el.getBoundingClientRect();
     const pillW   = Math.max(elRect.width + 28, 76);
-    const left    = elRect.left - navRect.left + elRect.width / 2 - pillW / 2;
-
-    setPillStyle({
-      left,
-      width:      pillW,
-      opacity:    1,
-      transition: withTransition
-        ? "left 0.42s cubic-bezier(0.34,1.28,0.64,1), width 0.42s cubic-bezier(0.34,1.28,0.64,1), opacity 0.18s ease"
-        : "none",
-    });
+    return {
+      left:  elRect.left - navRect.left + elRect.width / 2 - pillW / 2,
+      width: pillW,
+    };
   }
 
-  // On MOUNT — wait for DOM to be fully painted, then snap (no transition)
+  // Single effect — handles both mount snap AND route-change slide
   useEffect(() => {
-    // rAF x2 guarantees the browser has painted and refs have real dimensions
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
-        computeAndSet(false); // snap, no animation
+    if (!snappedRef.current) {
+      // ── MOUNT: double rAF so flex layout is fully resolved ──
+      let raf2;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          const rect = measure();
+          if (!rect) return;
+          // 1. Disable transition & jump to correct position
+          setEnableTransition(false);
+          setPill({ ...rect, opacity: 1 });
+          snappedRef.current = true;
+          // 2. One more frame later: re-enable transition for future nav
+          requestAnimationFrame(() => setEnableTransition(true));
+        });
       });
-      return () => cancelAnimationFrame(raf2);
-    });
-    return () => cancelAnimationFrame(raf1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← ONLY on mount
-
-  // On ROUTE CHANGE — slide with spring
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return; // skip — mount effect handles the first position
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
+    } else {
+      // ── ROUTE CHANGE: slide with spring (transition already enabled) ──
+      const rect = measure();
+      if (!rect) return;
+      setPill({ ...rect, opacity: 1 });
     }
-    computeAndSet(true); // animate
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, activeIndex]);
+
+  const transition = enableTransition
+    ? "left 0.42s cubic-bezier(0.34,1.28,0.64,1), width 0.42s cubic-bezier(0.34,1.28,0.64,1), opacity 0.18s ease"
+    : "none";
 
   return (
     <nav
@@ -92,14 +93,14 @@ export default function BottomNav() {
         padding:              "10px 20px 20px",
       }}
     >
-      {/* Glass rounded-rect indicator */}
+      {/* Glassmorphism rounded-rect pill */}
       <span
         aria-hidden="true"
         style={{
           position:             "absolute",
           top:                  8,
-          left:                 pillStyle.left,
-          width:                pillStyle.width,
+          left:                 pill.left,
+          width:                pill.width,
           height:               54,
           borderRadius:         16,
           background:           "rgba(40,160,85,0.11)",
@@ -107,8 +108,8 @@ export default function BottomNav() {
           backdropFilter:       "blur(10px) saturate(160%)",
           WebkitBackdropFilter: "blur(10px) saturate(160%)",
           boxShadow:            "0 2px 12px rgba(40,160,85,0.10), inset 0 1px 0 rgba(255,255,255,0.6)",
-          opacity:              pillStyle.opacity,
-          transition:           pillStyle.transition,
+          opacity:              pill.opacity,
+          transition,
           transform:            "translateZ(0)",
           pointerEvents:        "none",
         }}
@@ -118,11 +119,7 @@ export default function BottomNav() {
         {navItems.map(({ to, label, icon: Icon, center }, idx) => {
           if (center) {
             return (
-              <NavLink
-                key={to}
-                to={to}
-                className="relative -mt-8 flex flex-col items-center"
-              >
+              <NavLink key={to} to={to} className="relative -mt-8 flex flex-col items-center">
                 {({ isActive }) => (
                   <>
                     <div
