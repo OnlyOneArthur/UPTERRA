@@ -90,7 +90,7 @@ export const products = [
     title: "SSD 256GB SATA second laptop desktop",
     price: 195000,
     image:
-      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=400&q=80",
+      "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782382926/ssd_yfartq.png",
     rating: 4.2,
     sold: 30,
     category: "komponen PC",
