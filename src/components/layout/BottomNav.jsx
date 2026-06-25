@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, MapPin, ScanLine, ShoppingBag, User } from "lucide-react";
 
@@ -15,69 +15,63 @@ const DOM_ORDER = navItems
   .filter((i) => i !== null);
 
 export default function BottomNav() {
-  const location = useLocation();
-  const navRef   = useRef(null);
-  const itemRefs = useRef([]);
+  const location  = useLocation();
+  const navRef    = useRef(null);
+  const itemRefs  = useRef([]);
+  const pillRef   = useRef(null);
+  // track whether we've done the initial snap
+  const readyRef  = useRef(false);
 
   const nonCenterItems = navItems.filter((n) => !n.center);
   const activeIndex    = nonCenterItems.findIndex((n) =>
     location.pathname.startsWith(n.to)
   );
 
-  // pill state — left/width driven by measured DOM rects
-  const [pill, setPill] = useState({ left: -999, width: 72, opacity: 0 });
-  // separate flag so we can toggle CSS transition independently of pill position
-  const [enableTransition, setEnableTransition] = useState(false);
-  const snappedRef = useRef(false);
+  function movePill(animated) {
+    if (activeIndex === -1) return;
+    const domIdx  = DOM_ORDER[activeIndex];
+    const el      = itemRefs.current[domIdx];
+    const nav     = navRef.current;
+    const pill    = pillRef.current;
+    if (!el || !nav || !pill) return;
 
-  function measure() {
-    if (activeIndex === -1) return null;
-    const domIdx = DOM_ORDER[activeIndex];
-    const el     = itemRefs.current[domIdx];
-    const nav    = navRef.current;
-    if (!el || !nav) return null;
     const navRect = nav.getBoundingClientRect();
     const elRect  = el.getBoundingClientRect();
     const pillW   = Math.max(elRect.width + 28, 76);
-    return {
-      left:  elRect.left - navRect.left + elRect.width / 2 - pillW / 2,
-      width: pillW,
-    };
+    const left    = elRect.left - navRect.left + elRect.width / 2 - pillW / 2;
+
+    // Toggle transition via attribute — avoids React re-render race
+    if (animated) {
+      pill.style.transition =
+        "left 0.42s cubic-bezier(0.34,1.28,0.64,1), " +
+        "width 0.42s cubic-bezier(0.34,1.28,0.64,1), " +
+        "opacity 0.18s ease";
+    } else {
+      pill.style.transition = "none";
+    }
+
+    pill.style.left    = left + "px";
+    pill.style.width   = pillW + "px";
+    pill.style.opacity = "1";
   }
 
-  // Single effect — handles both mount snap AND route-change slide
+  // Runs on every pathname change (including initial mount)
   useEffect(() => {
-    if (!snappedRef.current) {
-      // ── MOUNT: double rAF so flex layout is fully resolved ──
-      let raf2;
-      const raf1 = requestAnimationFrame(() => {
-        raf2 = requestAnimationFrame(() => {
-          const rect = measure();
-          if (!rect) return;
-          // 1. Disable transition & jump to correct position
-          setEnableTransition(false);
-          setPill({ ...rect, opacity: 1 });
-          snappedRef.current = true;
-          // 2. One more frame later: re-enable transition for future nav
-          requestAnimationFrame(() => setEnableTransition(true));
+    if (!readyRef.current) {
+      // Mount: wait for 2 frames so flex layout is measured, then SNAP
+      let r2;
+      const r1 = requestAnimationFrame(() => {
+        r2 = requestAnimationFrame(() => {
+          movePill(false);          // snap, no animation
+          readyRef.current = true;
         });
       });
-      return () => {
-        cancelAnimationFrame(raf1);
-        cancelAnimationFrame(raf2);
-      };
-    } else {
-      // ── ROUTE CHANGE: slide with spring (transition already enabled) ──
-      const rect = measure();
-      if (!rect) return;
-      setPill({ ...rect, opacity: 1 });
+      return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
     }
+    // Subsequent navigations: SLIDE
+    movePill(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, activeIndex]);
-
-  const transition = enableTransition
-    ? "left 0.42s cubic-bezier(0.34,1.28,0.64,1), width 0.42s cubic-bezier(0.34,1.28,0.64,1), opacity 0.18s ease"
-    : "none";
+  }, [location.pathname]);
 
   return (
     <nav
@@ -93,14 +87,15 @@ export default function BottomNav() {
         padding:              "10px 20px 20px",
       }}
     >
-      {/* Glassmorphism rounded-rect pill */}
+      {/* Glass pill — position controlled directly via ref, NOT React state */}
       <span
+        ref={pillRef}
         aria-hidden="true"
         style={{
           position:             "absolute",
           top:                  8,
-          left:                 pill.left,
-          width:                pill.width,
+          left:                 "-999px",   // hidden off-screen until first snap
+          width:                76,
           height:               54,
           borderRadius:         16,
           background:           "rgba(40,160,85,0.11)",
@@ -108,8 +103,8 @@ export default function BottomNav() {
           backdropFilter:       "blur(10px) saturate(160%)",
           WebkitBackdropFilter: "blur(10px) saturate(160%)",
           boxShadow:            "0 2px 12px rgba(40,160,85,0.10), inset 0 1px 0 rgba(255,255,255,0.6)",
-          opacity:              pill.opacity,
-          transition,
+          opacity:              0,
+          transition:           "none",
           transform:            "translateZ(0)",
           pointerEvents:        "none",
         }}
