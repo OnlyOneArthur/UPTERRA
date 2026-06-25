@@ -10,6 +10,8 @@ import {
   Store,
   ShoppingBag,
   Settings,
+  ShoppingCart,
+  X,
 } from "lucide-react";
 
 const quickActions = [
@@ -31,6 +33,10 @@ export const products = [
     image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=400&q=80",
     rating: null,
     sold: null,
+    variants: [
+      { id: "a", label: "silver", color: "#c0c0c0" },
+      { id: "b", label: "space gray", color: "#5a5a5a" },
+    ],
   },
   {
     id: 2,
@@ -39,6 +45,9 @@ export const products = [
     image: "https://images.unsplash.com/photo-1614179818511-3da2ebe7c3a0?auto=format&fit=crop&w=400&q=80",
     rating: 4.7,
     sold: 21,
+    variants: [
+      { id: "a", label: "coklat plastik", color: "#8B6347" },
+    ],
   },
   {
     id: 3,
@@ -47,6 +56,10 @@ export const products = [
     image: "https://images.unsplash.com/photo-1585813507835-9f12abaafc00?auto=format&fit=crop&w=400&q=80",
     rating: null,
     sold: null,
+    variants: [
+      { id: "a", label: "hijau", color: "#4caf50" },
+      { id: "b", label: "bening", color: "#e0f7fa" },
+    ],
   },
   {
     id: 4,
@@ -55,6 +68,10 @@ export const products = [
     image: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=400&q=80",
     rating: null,
     sold: null,
+    variants: [
+      { id: "a", label: "8GB", color: "#4CAF50" },
+      { id: "b", label: "16GB", color: "#2196F3" },
+    ],
   },
 ];
 
@@ -62,9 +79,150 @@ function formatPrice(price) {
   return "Rp" + price.toLocaleString("id-ID");
 }
 
+// ─── Bottom Sheet (shared between cart & buy) ───────────────────────────────
+function ProductSheet({ product, mode, onClose, onConfirm }) {
+  const [selectedVariant, setSelectedVariant] = useState(
+    product?.variants?.[0] ?? null
+  );
+  const [quantity, setQuantity] = useState(1);
+
+  if (!product) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/40 z-40"
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 bg-white rounded-t-[24px] shadow-2xl">
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-[#e0e0e0]" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-3 pb-3">
+          <span className="text-[13px] font-semibold text-[#2d2d2d] line-clamp-1">
+            {product.title}
+          </span>
+          <button
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f2f2f2] flex-shrink-0"
+          >
+            <X size={15} className="text-[#888]" />
+          </button>
+        </div>
+
+        {/* Product Preview */}
+        <div className="px-5 flex items-center gap-3 pb-4 border-b border-[#f0f0f0]">
+          <img
+            src={product.image}
+            alt={product.title}
+            className="h-[60px] w-[60px] rounded-[12px] object-cover flex-shrink-0"
+            width="60"
+            height="60"
+          />
+          <div>
+            <p className="text-[16px] font-bold text-[#e03535]">
+              {formatPrice(product.price)}
+            </p>
+            {selectedVariant && (
+              <p className="text-[11px] text-[#888] mt-0.5">
+                Varian: {selectedVariant.label}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Variant Selector */}
+        {product.variants?.length > 0 && (
+          <div className="px-5 pt-4">
+            <p className="text-[12px] font-semibold text-[#555] mb-2">
+              Pilih Varian
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {product.variants.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setSelectedVariant(v)}
+                  className={`flex items-center gap-2 rounded-[10px] border px-3 py-2 transition-all ${
+                    selectedVariant?.id === v.id
+                      ? "border-[#3da85e] bg-[#f0faf3]"
+                      : "border-[#e0e0e0] bg-white"
+                  }`}
+                >
+                  <div
+                    className="h-5 w-5 rounded-md border border-[#ddd]"
+                    style={{ backgroundColor: v.color }}
+                  />
+                  <span className="text-[11px] text-[#444]">{v.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quantity */}
+        <div className="px-5 pt-5 pb-4 flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-[#2d2d2d]">Kuantitas</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2f2f2] text-[18px] font-bold text-[#555] active:bg-[#e0e0e0]"
+            >
+              −
+            </button>
+            <span className="text-[15px] font-semibold text-[#2d2d2d] min-w-[16px] text-center">
+              {quantity}
+            </span>
+            <button
+              onClick={() => setQuantity((q) => q + 1)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f2f2f2] text-[18px] font-bold text-[#555] active:bg-[#e0e0e0]"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Confirm Button */}
+        <div className="px-5 pb-8 pt-2">
+          <button
+            onClick={() => onConfirm({ product, variant: selectedVariant, quantity, mode })}
+            className="w-full rounded-full bg-[#3da85e] py-4 text-[14px] font-bold text-white active:bg-[#2d8f50] transition-colors"
+          >
+            {mode === "cart" ? "Tambah ke Keranjang" : "Beli Sekarang"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Market Page ────────────────────────────────────────────────────────
 export default function Market() {
   const [activeCategory, setActiveCategory] = useState("Semua");
+  const [sheet, setSheet] = useState(null); // { product, mode }
+  const [cartCount, setCartCount] = useState(0);
   const navigate = useNavigate();
+
+  const openSheet = (e, product, mode) => {
+    e.stopPropagation(); // prevent card click from navigating
+    setSheet({ product, mode });
+  };
+
+  const handleConfirm = ({ mode }) => {
+    if (mode === "cart") {
+      setCartCount((c) => c + 1);
+      setSheet(null);
+      // optionally show a toast here
+    } else {
+      setSheet(null);
+      navigate("/cart");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f6f4]">
@@ -73,7 +231,6 @@ export default function Market() {
         <header className="bg-white px-5 pt-6 pb-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {/* UPTERRA Logo */}
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3da85e]">
                 <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
                   <path
@@ -95,9 +252,11 @@ export default function Market() {
                 onClick={() => navigate("/cart")}
               >
                 <ShoppingBag size={17} className="text-[#555]" />
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
-                  6
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#3da85e] text-[9px] font-bold text-white">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -105,9 +264,7 @@ export default function Market() {
           {/* Search Bar */}
           <div className="mt-4 flex items-center gap-3 rounded-full bg-[#f4f4f4] px-4 py-3">
             <Search size={16} className="text-[#aaa] flex-shrink-0" />
-            <span className="flex-1 text-[13px] text-[#bbb]">
-              Cari produk second
-            </span>
+            <span className="flex-1 text-[13px] text-[#bbb]">Cari produk second</span>
           </div>
         </header>
 
@@ -177,39 +334,72 @@ export default function Market() {
         {/* Product Grid */}
         <div className="mt-3 grid grid-cols-2 gap-3 px-4 pb-28">
           {products.map((product) => (
-            <button
+            // ── Outer: div (not button) to allow nested buttons ──
+            <div
               key={product.id}
-              onClick={() => navigate(`/market/${product.id}`)}
-              className="overflow-hidden rounded-[18px] bg-white shadow-[0_4px_14px_rgba(0,0,0,0.07)] text-left active:scale-[0.98] transition-transform"
+              className="overflow-hidden rounded-[18px] bg-white shadow-[0_4px_14px_rgba(0,0,0,0.07)] flex flex-col"
             >
-              <img
-                src={product.image}
-                alt={product.title}
-                className="h-[150px] w-full object-cover"
-                width="200"
-                height="150"
-                loading="lazy"
-              />
-              <div className="px-3 py-2.5">
-                <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">
-                  {product.title}
-                </p>
-                <p className="mt-1 text-[13px] font-bold text-[#e03535]">
-                  {formatPrice(product.price)}
-                </p>
-                {product.rating && (
-                  <div className="mt-1 flex items-center gap-1">
-                    <span className="text-[11px] text-yellow-400">★</span>
-                    <span className="text-[10px] text-[#888]">
-                      {product.rating} | {product.sold} terjual
-                    </span>
-                  </div>
-                )}
+              {/* Clickable image + info area → navigate to detail */}
+              <button
+                onClick={() => navigate(`/market/${product.id}`)}
+                className="text-left active:opacity-90 transition-opacity flex-1"
+              >
+                <img
+                  src={product.image}
+                  alt={product.title}
+                  className="h-[140px] w-full object-cover"
+                  width="200"
+                  height="140"
+                  loading="lazy"
+                />
+                <div className="px-3 pt-2.5 pb-1">
+                  <p className="text-[12px] font-medium leading-snug text-[#3d3d3d] line-clamp-2">
+                    {product.title}
+                  </p>
+                  <p className="mt-1 text-[13px] font-bold text-[#e03535]">
+                    {formatPrice(product.price)}
+                  </p>
+                  {product.rating && (
+                    <div className="mt-1 flex items-center gap-1">
+                      <span className="text-[11px] text-yellow-400">★</span>
+                      <span className="text-[10px] text-[#888]">
+                        {product.rating} | {product.sold} terjual
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {/* ── Action Buttons Row ── */}
+              <div className="flex gap-1.5 px-2.5 pb-2.5 pt-1">
+                <button
+                  onClick={(e) => openSheet(e, product, "cart")}
+                  className="flex flex-1 items-center justify-center gap-1 rounded-full border border-[#3da85e] py-2 text-[10px] font-semibold text-[#3da85e] active:bg-[#f0faf3] transition-colors"
+                >
+                  <ShoppingCart size={11} />
+                  Keranjang
+                </button>
+                <button
+                  onClick={(e) => openSheet(e, product, "buy")}
+                  className="flex flex-1 items-center justify-center rounded-full bg-[#3da85e] py-2 text-[10px] font-semibold text-white active:bg-[#2d8f50] transition-colors"
+                >
+                  Beli
+                </button>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
+
+      {/* Bottom Sheet */}
+      {sheet && (
+        <ProductSheet
+          product={sheet.product}
+          mode={sheet.mode}
+          onClose={() => setSheet(null)}
+          onConfirm={handleConfirm}
+        />
+      )}
     </div>
   );
 }
