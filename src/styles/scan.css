@@ -1,6 +1,6 @@
 /* ==========================================
    UPTERRA — Scan Page Styles
-   v3: bug fixes + stop button + session button + card animation
+   v4: auto-connect, no manual start button, mic as focal point
    ========================================== */
 
 .sp-root {
@@ -272,33 +272,73 @@
   transition: color 0.3s;
 }
 
-/* Mic + gelombang */
-.sp-mic-wrap {
+/* Mic button — now a real button, tappable */
+.sp-mic-btn {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 20px rgba(34,197,94,0.18);
   margin-bottom: 8px;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-mic-btn:active { transform: scale(0.94); }
+
+.sp-mic-icon {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+  transition: color 0.25s;
+  pointer-events: none;
 }
 
+.sp-mic-btn--active {
+  background: #22c55e;
+  box-shadow: 0 6px 28px rgba(34,197,94,0.35);
+}
+.sp-mic-btn--active .sp-mic-icon { color: #fff; }
+
+.sp-mic-btn--speaking {
+  background: #16a34a;
+  box-shadow: 0 8px 36px rgba(34,197,94,0.55);
+  transform: scale(1.06);
+}
+.sp-mic-btn--speaking .sp-mic-icon { color: #fff; }
+
+.sp-mic-btn--loading {
+  background: #f0fdf4;
+  cursor: default;
+}
+.sp-mic-btn--loading .sp-mic-icon { color: #f59e0b; }
+
+/* Gelombang animasi di dalam mic button */
 .sp-wave {
   position: absolute;
   border-radius: 50%;
   border: 2px solid rgba(34,197,94,0.28);
   animation: wave-idle 2.4s ease-out infinite;
   transition: border-color 0.3s;
+  pointer-events: none;
 }
-.sp-wave-1 { width:120px; height:120px; animation-delay:0s; }
-.sp-wave-2 { width:148px; height:148px; animation-delay:0.5s; }
-.sp-wave-3 { width:176px; height:176px; animation-delay:1s; }
+.sp-wave-1 { width: 120px; height: 120px; animation-delay: 0s; }
+.sp-wave-2 { width: 148px; height: 148px; animation-delay: 0.5s; }
+.sp-wave-3 { width: 176px; height: 176px; animation-delay: 1s; }
 
 @keyframes wave-idle {
   0%   { transform:scale(0.88); opacity:0.6; }
   100% { transform:scale(1.35); opacity:0; }
 }
-
 .sp-wave--speaking {
   border-color: rgba(34,197,94,0.6);
   animation: wave-speaking 0.9s ease-out infinite !important;
@@ -308,39 +348,6 @@
   100% { transform:scale(1.5); opacity:0; }
 }
 
-.sp-mic-btn {
-  position: relative;
-  z-index: 2;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: #e8f5e9;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #22c55e;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 20px rgba(34,197,94,0.18);
-  cursor: default;
-  pointer-events: none;
-}
-.sp-mic-btn--active {
-  background: #22c55e;
-  color: #fff;
-  box-shadow: 0 6px 28px rgba(34,197,94,0.35);
-}
-.sp-mic-btn--speaking {
-  background: #16a34a;
-  color: #fff;
-  box-shadow: 0 8px 36px rgba(34,197,94,0.55);
-  transform: scale(1.06);
-}
-.sp-mic-btn--loading {
-  background: #f0fdf4;
-  color: #f59e0b;
-}
-
 .sp-voice-tap-hint {
   font-size: 13px;
   color: #aaa;
@@ -348,31 +355,6 @@
   margin-top: 2px;
   margin-bottom: 12px;
 }
-
-/* Tombol start/stop session (voice mode) */
-.sp-session-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #22c55e;
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 12px 28px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 4px;
-  transition: background 0.2s, transform 0.15s;
-  box-shadow: 0 4px 16px rgba(34,197,94,0.3);
-}
-.sp-session-btn:hover  { background: #16a34a; }
-.sp-session-btn:active { transform: scale(0.97); }
-.sp-session-btn--stop  {
-  background: #ef4444;
-  box-shadow: 0 4px 16px rgba(239,68,68,0.25);
-}
-.sp-session-btn--stop:hover { background: #dc2626; }
 
 /* Error + text fallback */
 .sp-voice-error {

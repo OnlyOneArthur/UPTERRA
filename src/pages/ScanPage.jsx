@@ -28,7 +28,7 @@ export default function ScanPage() {
     error,
   } = useScanAI();
 
-  // Mulai session AI saat halaman dibuka / mode berubah
+  // Auto-connect saat mount dan saat mode berubah
   useEffect(() => {
     startSession(mode);
     return () => stopSession();
@@ -79,7 +79,7 @@ export default function ScanPage() {
     return () => clearInterval(interval);
   }, [sessionActive, mode, sendVideoFrame]);
 
-  // Auto-scroll chat ke bawah
+  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [aiResponse, transcript]);
@@ -90,7 +90,6 @@ export default function ScanPage() {
     const reader = new FileReader();
     reader.onload = (ev) => sendVideoFrame(ev.target.result.split(',')[1]);
     reader.readAsDataURL(file);
-    // Reset input supaya file yang sama bisa dipilih lagi
     e.target.value = '';
   }, [sendVideoFrame]);
 
@@ -98,6 +97,16 @@ export default function ScanPage() {
     stopSession();
     setMode(newMode);
   }, [stopSession]);
+
+  // Toggle mic: tap mic untuk stop/start ulang sesi
+  const handleMicTap = useCallback(() => {
+    if (isConnecting) return;
+    if (sessionActive) {
+      stopSession();
+    } else {
+      startSession(mode);
+    }
+  }, [isConnecting, sessionActive, stopSession, startSession, mode]);
 
   return (
     <div className="sp-root">
@@ -132,7 +141,7 @@ export default function ScanPage() {
             {isConnecting ? 'Menghubungkan...' : sessionActive ? 'AI Aktif' : 'Offline'}
           </div>
 
-          {/* Tombol stop session */}
+          {/* Stop session button */}
           {sessionActive && (
             <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan sesi AI">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -193,26 +202,31 @@ export default function ScanPage() {
               {sessionActive
                 ? isSpeaking
                   ? 'Mendengarkan kamu...'
-                  : 'Bicara sekarang — AI siap'
+                  : 'Ceritakan barang atau sampah yang mau diidentifikasi'
                 : isConnecting
-                ? 'Menghubungkan AI...'
+                ? 'Menghubungkan ke AI...'
                 : 'Ceritakan barang atau sampah yang mau diidentifikasi'}
             </p>
 
-            {/* Mic button + animasi gelombang */}
-            <div className="sp-mic-wrap">
-              {sessionActive && (
-                <>
-                  <div className={`sp-wave sp-wave-1 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
-                  <div className={`sp-wave sp-wave-2 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
-                  <div className={`sp-wave sp-wave-3 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
-                </>
-              )}
-              <div className={`sp-mic-btn ${
+            {/* Mic button — tappable untuk toggle on/off */}
+            <button
+              className={`sp-mic-btn ${
                 sessionActive
                   ? isSpeaking ? 'sp-mic-btn--speaking' : 'sp-mic-btn--active'
                   : ''
-              } ${isConnecting ? 'sp-mic-btn--loading' : ''}`}>
+              } ${isConnecting ? 'sp-mic-btn--loading' : ''}`}
+              onClick={handleMicTap}
+              aria-label={sessionActive ? 'Hentikan sesi' : 'Mulai sesi AI'}
+            >
+              {/* Gelombang animasi */}
+              {sessionActive && (
+                <>
+                  <span className={`sp-wave sp-wave-1 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
+                  <span className={`sp-wave sp-wave-2 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
+                  <span className={`sp-wave sp-wave-3 ${isSpeaking ? 'sp-wave--speaking' : ''}`} />
+                </>
+              )}
+              <span className="sp-mic-icon">
                 {isConnecting ? (
                   <svg className="sp-spin" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
@@ -225,42 +239,16 @@ export default function ScanPage() {
                     <line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
                 )}
-              </div>
-            </div>
+              </span>
+            </button>
 
-            <p className="sp-voice-tap-hint">
-              {sessionActive
-                ? 'Mic aktif — bicara langsung'
-                : isConnecting
-                ? 'Mohon tunggu...'
-                : 'Ketuk Mulai untuk menghubungkan'}
-            </p>
-
-            {/* Tombol start/stop manual */}
-            {!isConnecting && (
-              <button
-                className={`sp-session-btn ${sessionActive ? 'sp-session-btn--stop' : ''}`}
-                onClick={() => sessionActive ? stopSession() : startSession(mode)}
-              >
-                {sessionActive ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="6" width="12" height="12" rx="2" />
-                    </svg>
-                    Hentikan Sesi
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                    Mulai Sesi AI
-                  </>
-                )}
-              </button>
+            {/* Hanya tampilkan teks status kalau connecting atau ada error */}
+            {isConnecting && (
+              <p className="sp-voice-tap-hint">Mohon tunggu...</p>
             )}
 
-            {error && (
+            {/* Error + text fallback */}
+            {error && !isConnecting && (
               <div className="sp-voice-error">
                 <p>{error}</p>
                 <form
