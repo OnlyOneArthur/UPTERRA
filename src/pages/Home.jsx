@@ -257,7 +257,7 @@ export default function Home() {
         <section className="mt-6">
           <div className="flex items-center justify-between">
             <h3 className="text-[16px] font-semibold text-[#303030]">
-              Rekomendasi Produk Bu'
+              Rekomendasi Produk
             </h3>
             <button className="text-sm font-semibold text-[#2d9b57]">
               Lihat Semua
