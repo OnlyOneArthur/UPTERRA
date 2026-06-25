@@ -10,10 +10,11 @@ export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
-  // Default langsung kamera
+
+  // Default: kamera dibuka pertama kali
   const [mode, setMode] = useState('camera');
   const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState(false);
+  const [cameraError, setCameraError] = useState(null); // null | 'denied' | 'unavailable'
   const cameraStreamRef = useRef(null);
 
   const {
@@ -31,18 +32,13 @@ export default function ScanPage() {
     voiceError,
   } = useScanAI();
 
-  // Auto-connect saat mount dan saat mode berubah
-  useEffect(() => {
-    startSession(mode);
-    return () => stopSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
-
-  // Kamera stream — hanya aktif di mode kamera
+  // ---- Kamera stream ----
+  // Buka kamera otomatis saat mode === 'camera'
   useEffect(() => {
     if (mode !== 'camera') {
+      // Matikan kamera saat pindah ke mode suara
       setCameraActive(false);
-      setCameraError(false);
+      setCameraError(null);
       if (cameraStreamRef.current) {
         cameraStreamRef.current.getTracks().forEach((t) => t.stop());
         cameraStreamRef.current = null;
@@ -50,17 +46,24 @@ export default function ScanPage() {
       return;
     }
 
-    setCameraError(false);
+    setCameraError(null);
+
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       .then((stream) => {
         cameraStreamRef.current = stream;
         setCameraActive(true);
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
       })
-      .catch(() => {
+      .catch((err) => {
         setCameraActive(false);
-        setCameraError(true);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setCameraError('denied');
+        } else {
+          setCameraError('unavailable');
+        }
       });
 
     return () => {
@@ -71,9 +74,17 @@ export default function ScanPage() {
     };
   }, [mode]);
 
-  // Kirim frame tiap 2 detik saat kamera aktif + sesi aktif
+  // ---- Sesi AI ----
+  // Mulai sesi kamera saat mount, otomatis sesuai mode
   useEffect(() => {
-    if (!sessionActive || mode !== 'camera' || !videoRef.current) return;
+    startSession(mode);
+    return () => stopSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  // ---- Kirim frame ke AI tiap 2 detik saat kamera aktif ----
+  useEffect(() => {
+    if (mode !== 'camera' || !cameraActive || !videoRef.current) return;
     const canvas = document.createElement('canvas');
     const interval = setInterval(() => {
       const video = videoRef.current;
@@ -85,7 +96,7 @@ export default function ScanPage() {
       sendVideoFrame(base64);
     }, 2000);
     return () => clearInterval(interval);
-  }, [sessionActive, mode, sendVideoFrame]);
+  }, [mode, cameraActive, sendVideoFrame]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -106,15 +117,15 @@ export default function ScanPage() {
     setMode(newMode);
   }, [stopSession]);
 
-  // Toggle mic: tap mic untuk stop/start ulang sesi
+  // Tombol mic: start/stop sesi voice
   const handleMicTap = useCallback(() => {
     if (isConnecting) return;
     if (sessionActive) {
       stopSession();
     } else {
-      startSession(mode);
+      startSession('voice');
     }
-  }, [isConnecting, sessionActive, stopSession, startSession, mode]);
+  }, [isConnecting, sessionActive, stopSession, startSession]);
 
   return (
     <div className="sp-root">
@@ -122,21 +133,41 @@ export default function ScanPage() {
       {/* ====== MODE KAMERA ====== */}
       {mode === 'camera' && (
         <div className="sp-cam-root">
-          {cameraActive ? (
-            <video ref={videoRef} autoPlay playsInline muted className="sp-video" />
-          ) : (
+          {/* Video stream */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="sp-video"
+            style={{ display: cameraActive ? 'block' : 'none' }}
+          />
+
+          {/* Placeholder saat kamera belum aktif */}
+          {!cameraActive && (
             <div className="sp-no-cam">
-              {cameraError ? (
+              {cameraError === 'denied' ? (
                 <>
                   <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                     <circle cx="12" cy="13" r="4"/>
-                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2" />
+                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2"/>
                   </svg>
-                  <p>Kamera tidak dapat dibuka</p>
-                  <p style={{ fontSize: 12, opacity: 0.6 }}>Pastikan izin kamera sudah diberikan di browser, lalu muat ulang halaman</p>
+                  <p>Izin kamera ditolak</p>
+                  <p style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
+                    Klik ikon gembok di address bar browser → aktifkan izin Kamera → muat ulang halaman.
+                  </p>
+                </>
+              ) : cameraError === 'unavailable' ? (
+                <>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <p>Kamera tidak tersedia di perangkat ini</p>
                 </>
               ) : (
+                // Sedang membuka kamera (loading)
                 <>
                   <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -154,7 +185,7 @@ export default function ScanPage() {
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
 
-          {/* Status badge — hanya tampil kalau ada info AI */}
+          {/* Status badge AI */}
           <div className="sp-status-badge">
             <span className={`sp-status-dot ${
               isConnecting ? 'connecting' : sessionActive ? 'live' : 'idle'
@@ -162,7 +193,7 @@ export default function ScanPage() {
             {isConnecting ? 'Menghubungkan...' : sessionActive ? 'AI Aktif' : 'Offline'}
           </div>
 
-          {/* Stop session button */}
+          {/* Tombol stop sesi */}
           {sessionActive && (
             <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan sesi AI">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -172,6 +203,7 @@ export default function ScanPage() {
             </button>
           )}
 
+          {/* Pilih dari galeri */}
           <div className="sp-gallery-wrap">
             <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -190,7 +222,14 @@ export default function ScanPage() {
             />
           </div>
 
-          {/* Hasil deteksi & AI response — hanya tampil di kamera, bukan pesan error voice */}
+          {/* Error API — hanya di kamera, bukan pesan voice */}
+          {error && (
+            <div className="sp-cam-error">
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* Hasil deteksi & respons AI */}
           {(detectionResult || aiResponse || transcript) && (
             <div className="sp-result-panel">
               {detectionResult && <ScanResultCard result={detectionResult} />}
@@ -206,6 +245,7 @@ export default function ScanPage() {
                   <p>{aiResponse}</p>
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
           )}
         </div>
@@ -229,7 +269,7 @@ export default function ScanPage() {
                 : 'Ceritakan barang atau sampah yang mau diidentifikasi'}
             </p>
 
-            {/* Mic button */}
+            {/* Tombol mic */}
             <button
               className={`sp-mic-btn ${
                 sessionActive
@@ -262,11 +302,9 @@ export default function ScanPage() {
               </span>
             </button>
 
-            {isConnecting && (
-              <p className="sp-voice-tap-hint">Mohon tunggu...</p>
-            )}
+            {isConnecting && <p className="sp-voice-tap-hint">Mohon tunggu...</p>}
 
-            {/* Error + text fallback — HANYA di mode voice */}
+            {/* Error voice + fallback teks — HANYA di mode voice */}
             {voiceError && !isConnecting && (
               <div className="sp-voice-error">
                 <p>{voiceError}</p>
