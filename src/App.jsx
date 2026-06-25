@@ -13,6 +13,8 @@ import MapView from "./pages/MapView";
 import Profile from "./pages/Profile";
 import LaporSampah from "./pages/LaporSampah";
 import KonfirmasiLaporan from "./pages/KonfirmasiLaporan";
+import LaporanSaya from "./pages/LaporanSaya";
+import Notification from "./pages/Notification";
 import ScanPage from "./pages/ScanPage";
 
 export default function App() {
@@ -33,6 +35,8 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/lapor-sampah" element={<LaporSampah />} />
         <Route path="/konfirmasi-laporan" element={<KonfirmasiLaporan />} />
+        <Route path="/laporan-saya" element={<LaporanSaya />} />
+        <Route path="/notifications" element={<Notification />} />
         <Route path="/scan" element={<ScanPage />} />
       </Routes>
     </BrowserRouter>

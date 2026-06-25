@@ -1,7 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import loginUpterra from "../assets/images/login_upterra.svg";
+
 export default function Register() {
   const navigate = useNavigate();
+
+  function handleRegister(e) {
+    e.preventDefault();
+    navigate("/home");
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f6f6] font-poppins">
@@ -30,7 +36,7 @@ export default function Register() {
             </p>
           </div>
 
-          <form className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             <input
               type="text"
               placeholder="Username"
@@ -83,10 +89,16 @@ export default function Register() {
           </div>
 
           <div className="flex justify-center gap-5">
-            <button className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+            <button
+              type="button"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+            >
               G
             </button>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+            <button
+              type="button"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+            >
               ☁️
             </button>
           </div>

@@ -11,51 +11,51 @@ const wasteCards = {
     {
       title: "Kompos Dari Dapur",
       image:
-        "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380141/organik_1_rye2kr.png",
     },
     {
       title: "Pupuk dari Ampas Kopi",
       image:
-        "https://images.unsplash.com/photo-1515706886582-54c73c5eaf41?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380458/organik_2_oonfoz.png",
     },
     {
       title: "Eco Enzyme Kulit Buah",
       image:
-        "https://images.unsplash.com/photo-1471193945509-9ad0617afabf?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380645/organik_3_uckg7y.png",
     },
   ],
   Anorganik: [
     {
       title: "Pilah Botol Plastik dengan Benar",
       image:
-        "https://images.unsplash.com/photo-1618477462146-050d2767eac4?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380844/anorganik_1_xm6ms4.png",
     },
     {
       title: "Kardus Bekas Jadi Cuan",
       image:
-        "https://images.unsplash.com/photo-1604186838309-c6715f0d3e6d?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380844/anorganik_2_c3g28z.png",
     },
     {
       title: "Botol Jadi Pot Estetik",
       image:
-        "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782380845/anorganik_3_il01ul.png",
     },
   ],
   "Limbah Elektronik": [
     {
       title: "Kabel Rusak Jadi Cuan",
       image:
-        "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782381068/limbah_1_vh9wgt.png",
     },
     {
       title: "Buang Baterai Bekas dengan Aman",
       image:
-        "https://images.unsplash.com/photo-1580894908361-967195033215?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782381069/limbah_2_cyecdr.png",
     },
     {
       title: "Aman Buang Lampu Bekas",
       image:
-        "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=800&q=80",
+        "https://res.cloudinary.com/mzzvuzn8/image/upload/v1782381069/limbah_3_l1cfr3.png",
     },
   ],
 };
@@ -102,7 +102,10 @@ export default function Home() {
             </div>
           </div>
 
-          <button className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
+          <button
+            onClick={() => navigate("/notifications")}
+            className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)] active:bg-gray-50 transition"
+          >
             <Bell size={18} className="text-[#6a6a6a]" />
             <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-semibold text-white">
               2
