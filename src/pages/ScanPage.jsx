@@ -6,7 +6,7 @@ import BottomNav from '../components/layout/BottomNav';
 import { useScanAI } from '../hooks/useScanAI';
 import '../styles/scan.css';
 
-// ---- Error toast: discreet, dapat di-dismiss ----
+// ---- Error toast ----
 function ErrorToast({ error, onDismiss }) {
   if (!error) return null;
   return (
@@ -29,6 +29,7 @@ function ErrorToast({ error, onDismiss }) {
   );
 }
 
+// ---- Text input fallback ----
 function TextInput({ onSend, disabled }) {
   const [val, setVal] = useState('');
   const submit = () => { if (val.trim()) { onSend(val.trim()); setVal(''); } };
@@ -96,7 +97,7 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // Kirim frame tiap 4 detik (frame di-buffer, AI analisis tiap 10 detik)
+  // Kirim frame tiap 4 detik
   useEffect(() => {
     if (mode !== 'camera' || !cameraActive || !videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -126,11 +127,6 @@ export default function ScanPage() {
     if (sessionActive) stopSession(); else startSession('voice');
   }, [isConnecting, isAIProcessing, sessionActive, stopSession, startSession]);
 
-  const statusLabel = isConnecting ? 'Menghubungkan...'
-    : isAIProcessing ? 'Menganalisis...'
-    : sessionActive ? 'Aktif'
-    : 'Siap';
-  const statusClass = (isConnecting || isAIProcessing) ? 'connecting' : sessionActive ? 'live' : 'idle';
   const visibleError = !dismissedError && error ? error : null;
 
   return (
@@ -139,7 +135,6 @@ export default function ScanPage() {
       {/* ====== MODE KAMERA ====== */}
       {mode === 'camera' && (
         <div className="sp-cam-root">
-
           {/* Video full-screen */}
           <video
             ref={videoRef}
@@ -158,7 +153,7 @@ export default function ScanPage() {
                     <circle cx="12" cy="13" r="4"/><line x1="1" y1="1" x2="23" y2="23"/>
                   </svg>
                   <p>Izin kamera diperlukan</p>
-                  <p style={{ fontSize: 11, opacity: 0.55 }}>Aktifkan kamera di pengaturan browser, lalu muat ulang.</p>
+                  <p className="sp-no-cam-sub">Aktifkan kamera di pengaturan browser, lalu muat ulang.</p>
                 </>
               ) : cameraError === 'unavailable' ? (
                 <>
@@ -169,41 +164,26 @@ export default function ScanPage() {
                   <p>Kamera tidak terdeteksi</p>
                 </>
               ) : (
-                <>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
+                <div className="sp-cam-loading">
+                  <span className="sp-cam-spinner" />
                   <p>Membuka kamera...</p>
-                </>
+                </div>
               )}
             </div>
           )}
 
-          {/* Scan frame */}
+          {/* Scan frame corners */}
           <ScanFrame active={sessionActive} />
 
-          {/* Top bar: mode toggle + status */}
+          {/* Top pill: mode toggle */}
           <div className="sp-top-bar">
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
-            <div className="sp-status-badge">
-              <span className={`sp-status-dot ${statusClass}`} />
-              {statusLabel}
-            </div>
           </div>
-
-          {/* Stop button */}
-          {sessionActive && (
-            <button className="sp-stop-btn" onClick={stopSession} aria-label="Hentikan">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-              Stop
-            </button>
-          )}
 
           {/* Error toast */}
           <ErrorToast error={visibleError} onDismiss={() => setDismissedError(true)} />
 
-          {/* Caption AI */}
+          {/* Caption AI — muncul di tengah bawah */}
           {caption && (
             <div className="sp-caption-overlay">
               <div className="sp-caption-inner">
@@ -213,17 +193,39 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* Galeri */}
-          <div className="sp-gallery-wrap">
-            <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()} aria-label="Pilih gambar">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {/* Bottom action bar */}
+          <div className="sp-cam-bottom">
+            {/* Tombol Galeri kiri */}
+            <button className="sp-gallery-btn" onClick={() => fileInputRef.current?.click()} aria-label="Pilih dari galeri">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-              Galeri
+              <span>Pilih dari galeri</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+                <path d="M5 20h14"/>
+              </svg>
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryPick} />
+
+            {/* Tombol shutter / stop di tengah */}
+            <button
+              className={`sp-shutter-btn ${sessionActive ? 'sp-shutter-btn--stop' : ''}`}
+              onClick={sessionActive ? stopSession : () => startSession('camera')}
+              aria-label={sessionActive ? 'Hentikan' : 'Mulai scan'}
+            >
+              {sessionActive ? (
+                <span className="sp-shutter-stop-icon" />
+              ) : (
+                <span className="sp-shutter-ring" />
+              )}
+            </button>
+
+            {/* Placeholder kanan untuk balance */}
+            <div className="sp-cam-bottom-spacer" />
           </div>
 
           {/* Result card */}
@@ -238,13 +240,20 @@ export default function ScanPage() {
       {/* ====== MODE SUARA ====== */}
       {mode === 'voice' && (
         <div className="sp-voice-root">
+          {/* Top pill */}
           <div className="sp-top-bar--light">
             <ScanModeToggle mode={mode} onChange={handleModeChange} />
           </div>
+
           <div className="sp-voice-body">
-            {!sessionActive && !isConnecting && (
-              <p className="sp-voice-hint">Ketuk mic untuk mulai bicara dengan AI tentang sampah elektronik kamu</p>
+            {/* Hint awal */}
+            {!sessionActive && !isConnecting && messages.length === 0 && (
+              <p className="sp-voice-hint">
+                Ceritakan barang atau sampah yang mau diidentifikasi
+              </p>
             )}
+
+            {/* Mic button */}
             <button
               className={[
                 'sp-mic-btn',
@@ -256,13 +265,15 @@ export default function ScanPage() {
               onClick={handleMicTap}
               aria-label={sessionActive ? 'Hentikan' : 'Mulai'}
             >
-              {[1,2,3].map((n) => (
-                <span key={n} className={`sp-wave sp-wave-${n}${(isSpeaking||isAISpeaking)?' sp-wave--active':''}`} />
+              {[1, 2, 3].map((n) => (
+                <span key={n} className={`sp-wave sp-wave-${n}${(isSpeaking || isAISpeaking) ? ' sp-wave--active' : ''}`} />
               ))}
               {(isConnecting || isAIProcessing) ? (
-                <svg className="sp-spin sp-mic-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg className="sp-spin sp-mic-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
               ) : (
-                <svg className="sp-mic-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className="sp-mic-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                   <line x1="12" y1="19" x2="12" y2="23"/>
@@ -270,17 +281,25 @@ export default function ScanPage() {
                 </svg>
               )}
             </button>
+
+            {/* Tap hint */}
             <p className="sp-voice-tap-hint">
               {isConnecting ? 'Menghubungkan...'
                 : isAIProcessing ? 'AI sedang berpikir...'
                 : isAISpeaking ? 'AI menjawab...'
                 : isSpeaking ? 'Mendengarkan...'
                 : sessionActive ? 'Bicara sekarang'
-                : 'Ketuk untuk mulai'}
+                : 'Ketuk dimana saja untuk mulai'}
             </p>
+
+            {/* Caption / transkrip AI */}
             {caption && (
-              <div className="sp-voice-caption"><p className="sp-caption-text">{caption}</p></div>
+              <div className="sp-voice-caption">
+                <p className="sp-caption-text">{caption}</p>
+              </div>
             )}
+
+            {/* Voice error */}
             {voiceError && (
               <div className="sp-voice-error">
                 <p>{voiceError}</p>
@@ -288,15 +307,21 @@ export default function ScanPage() {
                   onClick={() => { stopSession(); setTimeout(() => startSession('voice'), 200); }}>Coba Lagi</button>
               </div>
             )}
+
+            {/* Chat bubbles */}
             <div className="sp-voice-chat">
               {messages.map((m, i) => (
                 <div key={i} className={`sp-bubble sp-bubble--${m.role === 'user' ? 'user' : 'ai'}`}>
-                  <span className={`sp-chip-label${m.role==='ai'?' sp-chip-ai':''}`}>{m.role==='user'?'Kamu':'UPTERRA AI'}</span>
+                  <span className={`sp-chip-label${m.role === 'ai' ? ' sp-chip-ai' : ''}`}>
+                    {m.role === 'user' ? 'Kamu' : 'UPTERRA AI'}
+                  </span>
                   <p>{m.text}</p>
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
+
+            {/* Text fallback */}
             <div className="sp-text-fallback sp-text-always">
               <TextInput onSend={sendTextMessage} disabled={isAIProcessing || isAISpeaking} />
             </div>
