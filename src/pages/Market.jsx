@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useCartStore } from "../store/cartStore";
+import BottomNav from "../components/layout/BottomNav";
 
 const quickActions = [
   { label: "Pesanan", icon: ClipboardList, path: "/pesanan" },
@@ -486,6 +487,8 @@ export default function Market() {
           </>
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 }
