@@ -22,24 +22,24 @@ const menuSections = [
   {
     title: "Akun",
     items: [
-      { label: "Riwayat Scan", icon: History, meta: null },
-      { label: "Laporan Saya", icon: FileText, meta: null },
+      { label: "Riwayat Scan", icon: History, meta: null, route: null },
+      { label: "Laporan Saya", icon: FileText, meta: null, route: "/laporan-saya" },
     ],
   },
   {
     title: "Pengaturan",
     items: [
-      { label: "Bahasa", icon: Globe, meta: "Indonesia" },
-      { label: "Notifikasi", icon: Bell, meta: "Aktif" },
-      { label: "FAQ", icon: HelpCircle, meta: null },
-      { label: "Kebijakan Privasi", icon: Shield, meta: null },
+      { label: "Bahasa", icon: Globe, meta: "Indonesia", route: null },
+      { label: "Notifikasi", icon: Bell, meta: "Aktif", route: null },
+      { label: "FAQ", icon: HelpCircle, meta: null, route: null },
+      { label: "Kebijakan Privasi", icon: Shield, meta: null, route: null },
     ],
   },
   {
     title: "Lainnya",
     items: [
-      { label: "Undang Teman", icon: UserPlus, meta: null },
-      { label: "Tentang UPTERRA", icon: Info, meta: null },
+      { label: "Undang Teman", icon: UserPlus, meta: null, route: null },
+      { label: "Tentang UPTERRA", icon: Info, meta: null, route: null },
     ],
   },
 ];
@@ -127,6 +127,7 @@ export default function Profile() {
                   return (
                     <button
                       key={item.label}
+                      onClick={() => item.route && navigate(item.route)}
                       className={`flex w-full items-center gap-4 px-5 py-4 text-left active:bg-[#f6f6f4] transition-colors ${
                         idx !== section.items.length - 1
                           ? "border-b border-[#f0f0f0]"
