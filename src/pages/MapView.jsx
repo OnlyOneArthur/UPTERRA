@@ -179,7 +179,6 @@ export default function MapView() {
     };
   }, []);
 
-  // Show/hide markers based on active filter
   useEffect(() => {
     if (!mapInstanceRef.current || !window.L) return;
     markersRef.current.forEach(({ point, marker }) => {
@@ -203,18 +202,19 @@ export default function MapView() {
   };
 
   const HEADER_H = 130;
-  // NAV_H matches the BottomNav height (padding-top 10 + content ~44 + padding-bottom 20 = ~74px)
-  const NAV_H = 74;
-  // Bottom sheet sits directly on top of the navbar, no gap
-  const BOTTOM_H = 280;
+  // Total bottom area height = bottom sheet visible content + navbar
+  // BottomNav is fixed to viewport; bottom sheet extends to bottom:0
+  // and uses paddingBottom to push list content above the navbar.
+  const NAV_H = 74;       // BottomNav actual rendered height
+  const SHEET_VISIBLE = 210; // visible sheet content above navbar
+  const BOTTOM_TOTAL = SHEET_VISIBLE + NAV_H; // total space reserved at bottom
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-poppins">
       <div className="relative w-full max-w-sm bg-white shadow-xl overflow-hidden" style={{ height: "100dvh" }}>
 
-        {/* Header: search + filter chips */}
+        {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-[1000] bg-white px-4 pt-5 pb-3 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
-          {/* Search bar */}
           <div className="flex items-center gap-2 bg-[#f4f4f4] rounded-full px-4 py-2.5">
             <Search size={15} className="text-[#aaa] flex-shrink-0" />
             <input
@@ -230,8 +230,6 @@ export default function MapView() {
               </button>
             )}
           </div>
-
-          {/* Filter chips */}
           <div className="mt-3 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
@@ -293,18 +291,18 @@ export default function MapView() {
           </div>
         )}
 
-        {/* Map — bottom edge flush with top of bottom sheet */}
+        {/* Map */}
         <div
           ref={mapRef}
           className="absolute left-0 right-0"
-          style={{ top: `${HEADER_H}px`, bottom: `${BOTTOM_H + NAV_H}px` }}
+          style={{ top: `${HEADER_H}px`, bottom: `${BOTTOM_TOTAL}px` }}
         />
 
         {/* Loading overlay */}
         {!leafletLoaded && (
           <div
             className="absolute left-0 right-0 flex items-center justify-center bg-[#f6f6f4] z-[999]"
-            style={{ top: `${HEADER_H}px`, bottom: `${BOTTOM_H + NAV_H}px` }}
+            style={{ top: `${HEADER_H}px`, bottom: `${BOTTOM_TOTAL}px` }}
           >
             <div className="flex flex-col items-center gap-3">
               <div className="h-8 w-8 rounded-full border-4 border-[#3da85e] border-t-transparent animate-spin" />
@@ -313,11 +311,11 @@ export default function MapView() {
           </div>
         )}
 
-        {/* Selected Point Card — sits just above the bottom sheet */}
+        {/* Selected Point Card */}
         {selectedPoint && (
           <div
             className="absolute z-[1001] left-4 right-4 bg-white rounded-[18px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-4"
-            style={{ bottom: `${BOTTOM_H + NAV_H + 8}px` }}
+            style={{ bottom: `${BOTTOM_TOTAL + 8}px` }}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-3">
@@ -361,10 +359,14 @@ export default function MapView() {
           </div>
         )}
 
-        {/* Bottom Sheet — sits directly on top of BottomNav */}
+        {/*
+          Bottom Sheet — extends all the way to bottom:0
+          so it physically merges with the BottomNav beneath it.
+          paddingBottom pushes list content above the navbar.
+        */}
         <div
-          className="absolute left-0 right-0 z-[1000] bg-white rounded-t-[24px] shadow-[0_-4px_24px_rgba(0,0,0,0.10)]"
-          style={{ bottom: `${NAV_H}px`, height: `${BOTTOM_H}px` }}
+          className="absolute bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-[24px] shadow-[0_-4px_24px_rgba(0,0,0,0.10)]"
+          style={{ height: `${BOTTOM_TOTAL}px` }}
         >
           <div className="flex items-center justify-center pt-3 pb-2">
             <div className="h-1 w-10 rounded-full bg-[#e0e0e0]" />
@@ -376,7 +378,11 @@ export default function MapView() {
             </p>
           </div>
 
-          <div className="overflow-y-auto px-4 pb-4" style={{ height: `${BOTTOM_H - 70}px` }}>
+          {/* List scrolls within the sheet but stops above the navbar */}
+          <div
+            className="overflow-y-auto px-4"
+            style={{ height: `${SHEET_VISIBLE - 70}px` }}
+          >
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center pt-8 text-center">
                 <MapPin size={28} className="text-[#ccc]" />
