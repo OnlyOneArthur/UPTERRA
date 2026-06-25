@@ -13,6 +13,7 @@ import MapView from "./pages/MapView";
 import Profile from "./pages/Profile";
 import LaporSampah from "./pages/LaporSampah";
 import KonfirmasiLaporan from "./pages/KonfirmasiLaporan";
+import ScanPage from "./pages/ScanPage";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/lapor-sampah" element={<LaporSampah />} />
         <Route path="/konfirmasi-laporan" element={<KonfirmasiLaporan />} />
+        <Route path="/scan" element={<ScanPage />} />
       </Routes>
     </BrowserRouter>
   );
