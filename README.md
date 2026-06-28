@@ -1,16 +1,42 @@
-# React + Vite
+# UPTERRA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Eco-tech waste management app built with React + Vite + Tailwind CSS v4.
 
-Currently, two official plugins are available:
+## Branch: `feat/glassmorphism-ui`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This branch introduces a full **glassmorphism UI redesign** powered by **Framer Motion (Motion)**.
 
-## React Compiler
+### What's changed
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| File | Change |
+|---|---|
+| `package.json` | Added `motion` (Framer Motion) dependency |
+| `src/components/layout/Navbar.jsx` | Full glass navbar with Framer Motion spring animations, animated active pill, hover lifts |
+| `src/pages/Onboarding.jsx` | Slide entrance/exit animations, swipe gesture, animated dots, glass card container |
+| `src/components/layout/PageWrapper.jsx` | Reusable wrapper with background blobs, page slide-up entrance, embeds `<Navbar />` |
+| `src/components/layout/ProtectedRoute.jsx` | Auth guard redirect helper |
 
-## Expanding the ESLint configuration
+### Install & run
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+### How to use `PageWrapper` on any page
+
+```jsx
+import PageWrapper from "../components/layout/PageWrapper";
+
+export default function Home() {
+  return (
+    <PageWrapper>
+      <div className="px-4 pt-6">
+        {/* your content */}
+      </div>
+    </PageWrapper>
+  );
+}
+```
+
+> `hideNav={true}` hides the Navbar (useful for Login / Register / Onboarding pages).
