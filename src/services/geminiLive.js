@@ -1,13 +1,15 @@
 /**
- * geminiLive.js — Gemini client with Live WS + REST fallback (v3)
+ * geminiLive.js — Gemini client with Live WS + REST fallback (v4)
+ *
+ * Key facts (from Google AI Studio docs):
+ *  - "Gemini Live" is a WebSocket PROTOCOL, not a model name
+ *  - Correct model for Live API: gemini-2.0-flash-exp (supports BidiGenerateContent)
+ *  - New API keys need 2-5 min propagation before they work
+ *  - REST fallback uses gemini-1.5-flash (has free tier quota)
  *
  * Strategy:
- *  1. Try Gemini Live WebSocket (BidiGenerateContent) with gemini-2.0-flash-live-001
- *  2. If WS closes with 4xx/auth error → auto-fallback to REST generateContent
- *     using gemini-2.0-flash (available on all free keys)
- *
- * The fallback mimics the same onText/onReady/onError interface so the hook
- * and components need zero changes.
+ *  1. Connect via WebSocket using gemini-2.0-flash-exp
+ *  2. If WS fails → fallback to REST generateContent with gemini-1.5-flash
  */
 
 const GEMINI_WS_BASE =
@@ -15,8 +17,10 @@ const GEMINI_WS_BASE =
 const GEMINI_REST_BASE =
   'https://generativelanguage.googleapis.com/v1beta/models';
 
-const LIVE_MODEL = 'gemini-2.0-flash-live-001';
-const FALLBACK_MODEL = 'gemini-2.0-flash';
+// gemini-2.0-flash-exp = correct model string for Live WebSocket API
+const LIVE_MODEL = 'gemini-2.0-flash-exp';
+// gemini-1.5-flash = free tier REST fallback (15 RPM on free tier)
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
@@ -74,8 +78,7 @@ export function createGeminiLiveClient({
     }
   }
 
-  // ── REST fallback ─────────────────────────────────────────────────────────
-  // Queues frames and sends via generateContent REST API every 3s
+  // ── REST fallback (gemini-1.5-flash, 15 RPM free tier) ───────────────────
   let fallbackTimer = null;
   let pendingFrame = null;
   let pendingText = null;
@@ -118,7 +121,7 @@ export function createGeminiLiveClient({
     usingFallback = true;
     isReady = true;
     onReady?.();
-    console.info('[GeminiLive] Using REST fallback (gemini-2.0-flash)');
+    console.info(`[GeminiLive] Live WS unavailable. Using REST fallback (${FALLBACK_MODEL})`);
 
     fallbackTimer = setInterval(async () => {
       const parts = [];
@@ -169,10 +172,12 @@ export function createGeminiLiveClient({
     intentionalClose = false;
     isReady = false;
 
+    console.info(`[GeminiLive] Connecting via WebSocket (${model})...`);
     ws = new WebSocket(`${GEMINI_WS_BASE}?key=${apiKey}`);
 
     ws.onopen = () => {
       reconnectCount = 0;
+      console.info('[GeminiLive] WS open — sending setup...');
       ws.send(JSON.stringify(buildSetup()));
     };
 
@@ -182,6 +187,7 @@ export function createGeminiLiveClient({
 
         if (data.setupComplete) {
           isReady = true;
+          console.info('[GeminiLive] ✅ Live session ready (WebSocket)');
           onReady?.();
           return;
         }
@@ -218,16 +224,17 @@ export function createGeminiLiveClient({
         return;
       }
 
-      // 4001/4003/1008 = auth/policy error → skip retries, go straight to fallback
-      const isAuthError = [4001, 4003, 1008].includes(event.code) || event.code >= 4000;
+      console.warn(`[GeminiLive] WS closed with code: ${event.code}, reason: ${event.reason}`);
+
+      // Auth/policy errors (4xxx) or normal WS close after max retries → fallback
+      const isAuthError = event.code >= 4000 || event.code === 1008;
 
       if (!isAuthError && reconnectCount < MAX_RECONNECT) {
         reconnectCount++;
-        console.warn(`[GeminiLive] Disconnected (${event.code}). Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`);
+        console.warn(`[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT}) in ${RECONNECT_DELAY_MS}ms...`);
         setTimeout(connect, RECONNECT_DELAY_MS);
       } else {
-        // Fallback to REST
-        console.warn(`[GeminiLive] WS unavailable (code ${event.code}). Falling back to REST API.`);
+        console.warn('[GeminiLive] Switching to REST fallback...');
         startFallbackLoop();
       }
     };
@@ -241,7 +248,7 @@ export function createGeminiLiveClient({
 
   const sendFrame = (base64Jpeg) => {
     if (usingFallback) {
-      pendingFrame = base64Jpeg; // latest frame wins
+      pendingFrame = base64Jpeg;
       return;
     }
     if (!isOpen()) return;
@@ -255,8 +262,8 @@ export function createGeminiLiveClient({
   };
 
   const sendAudio = (base64Pcm) => {
+    if (usingFallback) return;
     if (!isOpen()) return;
-    if (usingFallback) return; // REST doesn't support audio input
     ws.send(
       JSON.stringify({
         realtimeInput: {
@@ -269,7 +276,6 @@ export function createGeminiLiveClient({
   const sendText = (text) => {
     if (usingFallback) {
       pendingText = text;
-      // Trigger immediately for text
       restGenerateContent([{ text }]);
       return;
     }
