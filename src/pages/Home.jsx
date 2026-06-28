@@ -114,20 +114,48 @@ export default function Home() {
           </button>
         </header>
 
-        <section className="relative mt-6 overflow-hidden rounded-[28px] bg-[#58a86d] px-5 py-5 text-white shadow-[0_12px_24px_rgba(88,168,109,0.25)]">
+        <section
+          className="relative mt-6 overflow-hidden rounded-[28px] px-5 py-5 text-white"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(88,168,109,0.88) 0%, rgba(47,135,78,0.94) 100%)",
+            backdropFilter: "blur(24px) saturate(200%)",
+            WebkitBackdropFilter: "blur(24px) saturate(200%)",
+            border: "1px solid rgba(255,255,255,0.30)",
+            boxShadow:
+              "0 12px 32px rgba(47,168,87,0.22), inset 0 1.5px 0 rgba(255,255,255,0.28)",
+          }}
+        >
+          {/* decorative blobs */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-10 -right-4 h-44 w-44 rounded-full"
+            style={{ background: "rgba(255,255,255,0.09)" }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-10 right-6 h-32 w-32 rounded-full"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          />
+
           <div className="relative z-10 max-w-[220px]">
             <h2 className="text-[16px] font-bold leading-snug">
               Scan sampahmu,
               <br />
               kenali jenisnya sekarang
             </h2>
-
             <p className="mt-2 text-[11px] leading-relaxed text-white/85">
               Gunakan kamera atau suara untuk identifikasi sampah dan panduan
               penanganan awal
             </p>
-
-            <button className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-medium text-[#414141] shadow-sm">
+            <button
+              className="mt-5 inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-[#1f7a3d]"
+              style={{
+                background: "rgba(255,255,255,0.90)",
+                boxShadow:
+                  "0 4px 14px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,1)",
+              }}
+            >
               <ScanLine size={16} />
               Mulai Scan
             </button>
@@ -139,7 +167,17 @@ export default function Home() {
             Mulai Kontribusi
           </h3>
 
-          <div className="mt-3 flex items-center justify-between rounded-[22px] bg-white px-5 py-4 shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+          <div
+            className="mt-3 flex items-center justify-between rounded-[22px] px-5 py-4"
+            style={{
+              background: "rgba(255,255,255,0.52)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.78)",
+              boxShadow:
+                "0 8px 24px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.90)",
+            }}
+          >
             <div>
               <h4 className="text-[15px] font-semibold text-[#4ba564]">
                 Lapor Tumpukan Sampah
@@ -148,10 +186,16 @@ export default function Home() {
                 Foto &amp; kirim lokasi real-time
               </p>
             </div>
-
             <button
               onClick={() => navigate("/lapor-sampah")}
-              className="inline-flex items-center gap-2 rounded-full bg-[#7fc88f] px-4 py-3 text-xs font-medium text-white active:bg-[#5db078] transition-colors"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-3 text-xs font-semibold text-[#1f7a3d] transition-colors active:opacity-80"
+              style={{
+                background: "rgba(127,200,143,0.32)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(100,180,120,0.32)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.80)",
+              }}
             >
               <Camera size={14} />
               Lapor sekarang
@@ -242,7 +286,11 @@ export default function Home() {
             {wasteCards[activeCategory].map((card) => (
               <article
                 key={card.title}
-                className="relative min-w-[148px] overflow-hidden rounded-[18px] bg-white shadow-[0_8px_16px_rgba(0,0,0,0.06)]"
+                className="relative min-w-[148px] overflow-hidden rounded-[18px] flex-shrink-0"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.60)",
+                  boxShadow: "0 8px 20px rgba(0,0,0,0.10)",
+                }}
               >
                 <img
                   src={card.image}
@@ -254,8 +302,16 @@ export default function Home() {
                     <p className="text-[11px] font-medium leading-snug text-white">
                       {card.title}
                     </p>
-                    <button className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#555555]">
-                      <ChevronRight size={16} />
+                    <button
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        background: "rgba(255,255,255,0.82)",
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        border: "1px solid rgba(255,255,255,0.90)",
+                      }}
+                    >
+                      <ChevronRight size={16} className="text-[#555]" />
                     </button>
                   </div>
                 </div>
@@ -278,13 +334,29 @@ export default function Home() {
             {dropPoints.map((point, index) => (
               <div
                 key={point.name}
-                className="flex items-center justify-between rounded-[20px] bg-white px-4 py-3 shadow-[0_6px_14px_rgba(0,0,0,0.05)]"
+                className="flex items-center justify-between rounded-[20px] px-4 py-3"
+                style={{
+                  background: "rgba(255,255,255,0.52)",
+                  backdropFilter: "blur(20px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.78)",
+                  boxShadow:
+                    "0 6px 18px rgba(0,0,0,0.06), inset 0 1.5px 0 rgba(255,255,255,0.90)",
+                }}
               >
                 <div className="flex items-start gap-3">
                   <span
-                    className={`mt-1.5 h-2.5 w-2.5 rounded-full ${
-                      index === 2 ? "bg-[#9fc8ff]" : "bg-[#bde9c8]"
-                    }`}
+                    className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                    style={{
+                      background:
+                        index === 2
+                          ? "rgba(130,170,240,0.70)"
+                          : "rgba(100,200,130,0.70)",
+                      boxShadow:
+                        index === 2
+                          ? "0 0 0 3px rgba(130,170,240,0.18)"
+                          : "0 0 0 3px rgba(100,200,130,0.18)",
+                    }}
                   />
                   <div>
                     <h4 className="text-[13px] font-medium leading-snug text-[#3d3d3d]">
@@ -297,11 +369,24 @@ export default function Home() {
                 </div>
 
                 <span
-                  className={`rounded-full px-4 py-1.5 text-[10px] font-medium ${
+                  className="rounded-full px-4 py-1.5 text-[10px] font-medium"
+                  style={
                     point.badge === "E-Waste"
-                      ? "bg-[#def1ff] text-[#6ba8d7]"
-                      : "bg-[#e8f6ff] text-[#7bb8df]"
-                  }`}
+                      ? {
+                          background: "rgba(130,185,240,0.22)",
+                          backdropFilter: "blur(8px)",
+                          WebkitBackdropFilter: "blur(8px)",
+                          border: "1px solid rgba(100,150,220,0.28)",
+                          color: "#2a5fa8",
+                        }
+                      : {
+                          background: "rgba(120,210,150,0.22)",
+                          backdropFilter: "blur(8px)",
+                          WebkitBackdropFilter: "blur(8px)",
+                          border: "1px solid rgba(100,180,120,0.28)",
+                          color: "#2d7a45",
+                        }
+                  }
                 >
                   {point.badge}
                 </span>
