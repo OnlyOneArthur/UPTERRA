@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import ScanFrame from '../components/ScanFrame';
 import ScanModeToggle from '../components/ScanModeToggle';
 import ScanResultCard from '../components/ScanResultCard';
+import ScanVideoStream from '../components/ScanVideoStream';
 import BottomNav from '../components/layout/BottomNav';
 import { useScanAI } from '../hooks/useScanAI';
 import '../styles/scan.css';
@@ -11,7 +12,6 @@ export default function ScanPage() {
   const fileInputRef = useRef(null);
   const [mode, setMode] = useState('camera');
   const [cameraActive, setCameraActive] = useState(false);
-  // audioUnlocked: true setelah user pertama kali tap layar
   const [audioUnlocked, setAudioUnlocked] = useState(false);
 
   const {
@@ -30,15 +30,13 @@ export default function ScanPage() {
     voiceError,
   } = useScanAI();
 
-  // ---- Unlock audio context saat pertama kali user tap ----
+  // Unlock AudioContext + speechSynthesis on first user tap
   const unlockAudio = useCallback(() => {
     if (audioUnlocked) return;
-    // Buat & resume AudioContext kosong untuk unlock autoplay policy
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       ctx.resume().then(() => ctx.close());
     } catch {}
-    // Paksa speechSynthesis warm-up
     if (window.speechSynthesis) {
       const warm = new SpeechSynthesisUtterance('');
       window.speechSynthesis.speak(warm);
@@ -47,41 +45,30 @@ export default function ScanPage() {
     setAudioUnlocked(true);
   }, [audioUnlocked]);
 
-  // ---- Auto-start AI session (setelah audio unlock, atau saat mode berubah) ----
+  // Start AI session after audio unlock (camera / voice modes only)
   useEffect(() => {
-    if (!audioUnlocked) return;
+    if (!audioUnlocked || mode === 'live') return;
     startSession(mode);
     return () => stopSession();
-  }, [mode, audioUnlocked]);
+  }, [mode, audioUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- Camera stream ----
+  // Camera stream (camera mode only)
   useEffect(() => {
+    if (mode !== 'camera') { setCameraActive(false); return; }
     let localStream = null;
-    if (mode === 'camera') {
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-        .then((s) => {
-          localStream = s;
-          setCameraActive(true);
-          if (videoRef.current) videoRef.current.srcObject = s;
-        })
-        .catch(() => {
-          navigator.mediaDevices
-            .getUserMedia({ video: true, audio: false })
-            .then((s) => {
-              localStream = s;
-              setCameraActive(true);
-              if (videoRef.current) videoRef.current.srcObject = s;
-            })
-            .catch(() => setCameraActive(false));
-        });
-    } else {
-      setCameraActive(false);
-    }
-    return () => { if (localStream) localStream.getTracks().forEach((t) => t.stop()); };
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then((s) => { localStream = s; setCameraActive(true); if (videoRef.current) videoRef.current.srcObject = s; })
+      .catch(() => {
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: false })
+          .then((s) => { localStream = s; setCameraActive(true); if (videoRef.current) videoRef.current.srcObject = s; })
+          .catch(() => setCameraActive(false));
+      });
+    return () => { localStream?.getTracks().forEach((t) => t.stop()); };
   }, [mode]);
 
-  // ---- Kirim frame ke AI tiap 2 detik ----
+  // Send frame every 2 s (camera mode)
   useEffect(() => {
     if (!sessionActive || mode !== 'camera' || !videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -104,14 +91,27 @@ export default function ScanPage() {
     reader.readAsDataURL(file);
   };
 
-  // pesan terakhir dari AI untuk ditampilkan di panel
   const lastAiMsg = [...messages].reverse().find((m) => m.role === 'ai');
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+
+  // ── Gemini Live mode: render dedicated component ─────────────────────────
+  if (mode === 'live') {
+    return (
+      <div className="sp-root">
+        {/* Mode toggle still visible so user can switch back */}
+        <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+          <ScanModeToggle mode={mode} onChange={setMode} />
+        </div>
+        <ScanVideoStream onBack={() => setMode('camera')} />
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="sp-root" onClick={unlockAudio}>
 
-      {/* ====== SPLASH UNLOCK AUDIO (muncul sekali di awal) ====== */}
+      {/* ── Splash unlock overlay ── */}
       {!audioUnlocked && (
         <div className="sp-unlock-overlay">
           <div className="sp-unlock-card">
@@ -130,7 +130,7 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ====== MODE KAMERA ====== */}
+      {/* ── Camera mode ── */}
       {mode === 'camera' && (
         <div className="sp-cam-root">
           {cameraActive ? (
@@ -147,12 +147,10 @@ export default function ScanPage() {
 
           <ScanFrame active={sessionActive} />
 
-          {/* Top bar */}
           <div className="sp-top-bar">
             <ScanModeToggle mode={mode} onChange={setMode} />
           </div>
 
-          {/* Status badge */}
           {audioUnlocked && (
             <div className="sp-status-badge">
               <span className={`sp-status-dot ${
@@ -164,14 +162,12 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* Caption overlay (apa yang AI bilang, muncul live) */}
           {caption && (
             <div className="sp-caption-overlay">
               <p>{caption}</p>
             </div>
           )}
 
-          {/* Gallery button */}
           <div className="sp-gallery-wrap">
             <button className="sp-gallery-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -184,7 +180,6 @@ export default function ScanPage() {
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleGalleryPick} />
           </div>
 
-          {/* Result panel */}
           {(detectionResult || lastAiMsg || error) && (
             <div className="sp-result-panel">
               {error && <div className="sp-error">{error.msg || error}</div>}
@@ -206,7 +201,7 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ====== MODE SUARA (LIGHT) ====== */}
+      {/* ── Voice mode ── */}
       {mode === 'voice' && (
         <div className="sp-voice-root">
           <div className="sp-top-bar sp-top-bar--light">
@@ -224,7 +219,6 @@ export default function ScanPage() {
                 : 'Ceritakan barang atau sampah yang mau diidentifikasi'}
             </p>
 
-            {/* Mic + wave */}
             <div className="sp-mic-wrap">
               {(sessionActive || isAISpeaking) && (
                 <>
@@ -259,7 +253,6 @@ export default function ScanPage() {
               </div>
             </div>
 
-            {/* Caption live */}
             {caption && <p className="sp-voice-caption">{caption}</p>}
 
             <p className="sp-voice-tap-hint">
@@ -268,7 +261,6 @@ export default function ScanPage() {
 
             {voiceError && <div className="sp-voice-error">{voiceError}</div>}
 
-            {/* Chat history */}
             {messages.length > 0 && (
               <div className="sp-voice-chat">
                 {messages.slice(-6).map((m, i) => (
