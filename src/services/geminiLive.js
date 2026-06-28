@@ -1,15 +1,11 @@
 /**
- * geminiLive.js — Gemini client with Live WS + REST fallback (v4)
+ * geminiLive.js — Gemini client with Live WS + REST fallback (v5)
  *
- * Key facts (from Google AI Studio docs):
- *  - "Gemini Live" is a WebSocket PROTOCOL, not a model name
- *  - Correct model for Live API: gemini-2.0-flash-exp (supports BidiGenerateContent)
+ * Key facts:
+ *  - Live API model: gemini-2.0-flash-exp (BidiGenerateContent via WebSocket)
+ *  - REST fallback:  gemini-2.5-flash (confirmed available in user's project)
+ *  - gemini-1.5-flash is DEPRECATED on v1beta — do not use
  *  - New API keys need 2-5 min propagation before they work
- *  - REST fallback uses gemini-1.5-flash (has free tier quota)
- *
- * Strategy:
- *  1. Connect via WebSocket using gemini-2.0-flash-exp
- *  2. If WS fails → fallback to REST generateContent with gemini-1.5-flash
  */
 
 const GEMINI_WS_BASE =
@@ -17,10 +13,8 @@ const GEMINI_WS_BASE =
 const GEMINI_REST_BASE =
   'https://generativelanguage.googleapis.com/v1beta/models';
 
-// gemini-2.0-flash-exp = correct model string for Live WebSocket API
-const LIVE_MODEL = 'gemini-2.0-flash-exp';
-// gemini-1.5-flash = free tier REST fallback (15 RPM on free tier)
-const FALLBACK_MODEL = 'gemini-1.5-flash';
+const LIVE_MODEL     = 'gemini-2.0-flash-exp';  // Live WebSocket API
+const FALLBACK_MODEL = 'gemini-2.5-flash';       // REST fallback — confirmed in model list
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
@@ -78,7 +72,7 @@ export function createGeminiLiveClient({
     }
   }
 
-  // ── REST fallback (gemini-1.5-flash, 15 RPM free tier) ───────────────────
+  // ── REST fallback ─────────────────────────────────────────────────────────
   let fallbackTimer = null;
   let pendingFrame = null;
   let pendingText = null;
@@ -224,17 +218,16 @@ export function createGeminiLiveClient({
         return;
       }
 
-      console.warn(`[GeminiLive] WS closed with code: ${event.code}, reason: ${event.reason}`);
+      console.warn(`[GeminiLive] WS closed — code: ${event.code}, reason: "${event.reason}"`);
 
-      // Auth/policy errors (4xxx) or normal WS close after max retries → fallback
       const isAuthError = event.code >= 4000 || event.code === 1008;
 
       if (!isAuthError && reconnectCount < MAX_RECONNECT) {
         reconnectCount++;
-        console.warn(`[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT}) in ${RECONNECT_DELAY_MS}ms...`);
+        console.warn(`[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`);
         setTimeout(connect, RECONNECT_DELAY_MS);
       } else {
-        console.warn('[GeminiLive] Switching to REST fallback...');
+        console.warn('[GeminiLive] Switching to REST fallback (gemini-2.5-flash)...');
         startFallbackLoop();
       }
     };
