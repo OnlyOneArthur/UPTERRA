@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCartStore } from "../store/cartStore";
 import BottomNav from "../components/layout/BottomNav";
+import { motion } from "framer-motion";
 
 const quickActions = [
   { label: "Pesanan", icon: ClipboardList, path: "/pesanan" },
@@ -459,20 +460,74 @@ export default function Market() {
             </div>
 
             {/* Category Tabs */}
-            <div className="mt-5 flex gap-1 overflow-x-auto px-5 pb-1 scrollbar-hide">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12px] font-semibold transition-all ${
-                    activeCategory === cat
-                      ? "text-[#3da85e] border-b-2 border-[#3da85e]"
-                      : "text-[#aaa]"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="mt-5 overflow-x-auto px-5 pb-1 scrollbar-hide">
+              <div
+                className="relative flex gap-1 w-fit"
+                style={{
+                  background: "rgba(255,255,255,0.45)",
+                  backdropFilter: "blur(14px) saturate(160%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(160%)",
+                  border: "1px solid rgba(255,255,255,0.72)",
+                  borderRadius: 999,
+                  boxShadow:
+                    "0 4px 18px rgba(0,0,0,0.07), inset 0 1.5px 0 rgba(255,255,255,0.90)",
+                  padding: "5px",
+                }}
+              >
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className="relative whitespace-nowrap rounded-full px-4 py-[7px] text-[12px] font-semibold transition-colors duration-200 z-10"
+                      style={{ color: isActive ? "#1f7a3d" : "#aaa" }}
+                    >
+                      {isActive && (
+                        <motion.span
+                          layoutId="market-category-pill"
+                          transition={{
+                            type: "spring",
+                            stiffness: 360,
+                            damping: 28,
+                            mass: 0.9,
+                          }}
+                          aria-hidden="true"
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: 999,
+                            background:
+                              "linear-gradient(145deg, rgba(141,199,154,0.55) 0%, rgba(88,168,109,0.20) 100%)",
+                            border: "1px solid rgba(100,190,130,0.40)",
+                            backdropFilter: "blur(10px) saturate(180%)",
+                            WebkitBackdropFilter: "blur(10px) saturate(180%)",
+                            boxShadow:
+                              "0 3px 14px rgba(47,168,87,0.18), inset 0 1px 0 rgba(255,255,255,0.80)",
+                            zIndex: -1,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: "10%",
+                              width: "80%",
+                              height: "40%",
+                              borderRadius: "0 0 50% 50%",
+                              background:
+                                "linear-gradient(180deg, rgba(255,255,255,0.70) 0%, transparent 100%)",
+                            }}
+                          />
+                        </motion.span>
+                      )}
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Product Grid */}
