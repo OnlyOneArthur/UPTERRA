@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Bell, Camera, ChevronRight, ScanLine } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
 import loginUpterra from "../assets/images/profile.svg";
+import { motion } from "framer-motion";
 
 const categories = ["Organik", "Anorganik", "Limbah Elektronik"];
 
@@ -163,26 +164,80 @@ export default function Home() {
             Ayo Kelola Sampahmu
           </h3>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          {/* Glass pill track */}
+          <div
+            className="relative mt-3 grid grid-cols-3 gap-0 p-[5px]"
+            style={{
+              background: "rgba(255,255,255,0.45)",
+              backdropFilter: "blur(14px) saturate(160%)",
+              WebkitBackdropFilter: "blur(14px) saturate(160%)",
+              border: "1px solid rgba(255,255,255,0.72)",
+              borderRadius: 999,
+              boxShadow:
+                "0 4px 18px rgba(0,0,0,0.07)," +
+                "inset 0 1px 0 rgba(255,255,255,0.90)",
+            }}
+          >
             {categories.map((category) => {
-              const active = activeCategory === category;
+              const isActive = activeCategory === category;
 
               return (
                 <button
                   key={category}
                   onClick={() => setActiveCategory(category)}
-                  className={`rounded-full px-2 py-2 text-[11px] font-semibold transition ${
-                    active
-                      ? "bg-[#8dc79a] text-[#247e46]"
-                      : "bg-white text-[#b5b5b5]"
-                  }`}
+                  className="relative z-10 rounded-full px-2 py-[9px] text-[11px] font-semibold transition-colors duration-200"
+                  style={{ color: isActive ? "#1f7a3d" : "#b5b5b5" }}
                 >
+                  {/* sliding glass pill — lives inside the active button */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="category-pill"
+                      transition={{
+                        type: "spring",
+                        stiffness: 360,
+                        damping: 28,
+                        mass: 0.9,
+                      }}
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        borderRadius: 999,
+                        background:
+                          "linear-gradient(145deg, rgba(141,199,154,0.55) 0%, rgba(88,168,109,0.20) 100%)",
+                        border: "1px solid rgba(100,190,130,0.40)",
+                        backdropFilter: "blur(10px) saturate(180%)",
+                        WebkitBackdropFilter: "blur(10px) saturate(180%)",
+                        boxShadow:
+                          "0 3px 14px rgba(47,168,87,0.18)," +
+                          "inset 0 1px 0 rgba(255,255,255,0.80)",
+                        overflow: "hidden",
+                        zIndex: -1,
+                      }}
+                    >
+                      {/* inner top shine */}
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: "10%",
+                          width: "80%",
+                          height: "40%",
+                          borderRadius: "0 0 50% 50%",
+                          background:
+                            "linear-gradient(180deg, rgba(255,255,255,0.70) 0%, transparent 100%)",
+                        }}
+                      />
+                    </motion.span>
+                  )}
                   {category}
                 </button>
               );
             })}
           </div>
 
+          {/* cards stay exactly the same */}
           <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
             {wasteCards[activeCategory].map((card) => (
               <article
@@ -194,13 +249,11 @@ export default function Home() {
                   alt={card.title}
                   className="h-[170px] w-full object-cover"
                 />
-
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 pb-3 pt-10">
                   <div className="flex items-end justify-between gap-2">
                     <p className="text-[11px] font-medium leading-snug text-white">
                       {card.title}
                     </p>
-
                     <button className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#555555]">
                       <ChevronRight size={16} />
                     </button>
