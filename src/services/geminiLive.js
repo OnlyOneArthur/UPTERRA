@@ -1,23 +1,22 @@
-// ─── CONFIRMED working combination (June 2026) ───────────────────────────────
-// gemini-2.5-flash-live-preview  →  requires v1alpha endpoint, supports TEXT
-// gemini-2.0-flash               →  v1 endpoint, REST fallback for generateContent
-// gemini-1.5-flash               →  REMOVED from v1beta — do NOT use
+// ─── Model notes (June 2026) ──────────────────────────────────────────────────────
+// gemini-2.0-flash-live-001     →  v1alpha WS, GA, available on all API keys
+// gemini-2.5-flash-live-preview →  v1alpha WS, preview (restricted access)
+// gemini-2.0-flash              →  v1 REST fallback, available on all keys
+// gemini-1.5-flash              →  REMOVED — do NOT use
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
   "https://generativelanguage.googleapis.com/v1/models";
 
-const LIVE_MODEL = "gemini-2.5-flash-live-preview";
+// Use the GA stable live model — works on all API keys without allowlist
+const LIVE_MODEL = "gemini-2.0-flash-live-001";
 const FALLBACK_MODEL = "gemini-2.0-flash";
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
 
 // WebSocket close codes that should NOT be retried — go straight to REST.
-// 1007 = Unsupported modality (e.g. TEXT on audio-only model)
-// 1008 = Policy Violation / key rejection
-// 4001/4003 = Unauthorized / Forbidden
 const NO_RETRY_CODES = new Set([1007, 1008, 4001, 4003]);
 
 export function createGeminiLiveClient({
@@ -85,8 +84,9 @@ export function createGeminiLiveClient({
     try {
       const body = {
         contents: [{ role: "user", parts }],
+        // REST v1 uses camelCase: systemInstruction (NOT system_instruction)
         ...(systemInstruction && {
-          system_instruction: { parts: [{ text: systemInstruction }] },
+          systemInstruction: { parts: [{ text: systemInstruction }] },
         }),
         generationConfig: { temperature: 0.4 },
       };
@@ -158,6 +158,7 @@ export function createGeminiLiveClient({
       },
     };
     if (systemInstruction) {
+      // WS v1alpha uses snake_case for setup
       setup.system_instruction = { parts: [{ text: systemInstruction }] };
     }
     return { setup };
