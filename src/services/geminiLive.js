@@ -1,12 +1,22 @@
-// ─── Stable REST mode with rate limiting (Option A) ────────────────────────────
-// Increased interval + client-side throttling to stay within free tier limits.
-// Recommended interval: 7-10 seconds for sustainable free tier usage.
+// ─── Smart AI Scan with Change Detection ─────────────────────────────────────
+// Only sends frames to Gemini when the image actually changes.
+// This greatly reduces quota usage on free tier.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_REST_BASE = "https://generativelanguage.googleapis.com/v1/models";
 const MODEL = "gemini-2.0-flash";
 
-const MIN_INTERVAL_MS = 8000; // 8 seconds - good balance for free tier
+const MIN_INTERVAL_MS = 7000; // 7 seconds minimum between calls
 
+function getFrameFingerprint(base64) {
+  if (!base64) return "";
+  const len = base64.length;
+  // Take samples from start, middle, and end for fast comparison
+  return (
+    base64.slice(0, 60) +
+    base64.slice(Math.floor(len * 0.4), Math.floor(len * 0.4) + 40) +
+    base64.slice(len - 60)
+  );
+}
 
 export function createGeminiLiveClient({
   apiKey,
@@ -21,6 +31,7 @@ export function createGeminiLiveClient({
   let pendingText = null;
   let isReady = false;
   let lastSentTime = 0;
+  let lastFrameFingerprint = "";
 
   async function restGenerateContent(parts) {
     if (!apiKey || parts.length === 0) return;
@@ -51,7 +62,7 @@ export function createGeminiLiveClient({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        console.error("[GeminiLive] REST ERROR (full):", JSON.stringify(errJson, null, 2));
+        console.error("[GeminiLive] REST ERROR:", JSON.stringify(errJson, null, 2));
         const msg = errJson?.error?.message || `HTTP ${res.status}`;
         onError?.(`Gemini API error: ${msg}`);
         return;
@@ -70,7 +81,7 @@ export function createGeminiLiveClient({
     if (fallbackTimer) return;
     isReady = true;
     onReady?.();
-    console.info(`[GeminiLive] Using stable REST mode with rate limiting (${MIN_INTERVAL_MS}ms interval)`);
+    console.info(`[GeminiLive] Smart mode active (only sends on change, min ${MIN_INTERVAL_MS}ms)`);
 
     fallbackTimer = setInterval(async () => {
       const now = Date.now();
@@ -89,7 +100,7 @@ export function createGeminiLiveClient({
 
       lastSentTime = now;
       await restGenerateContent(parts);
-    }, 2000); // Check every 2s, but only send if MIN_INTERVAL_MS has passed
+    }, 1500);
   }
 
   function stopFallbackLoop() {
@@ -101,20 +112,32 @@ export function createGeminiLiveClient({
   }
 
   const connect = () => {
-    console.info("[GeminiLive] Starting in REST-only mode (rate limited)");
+    console.info("[GeminiLive] Starting smart change detection mode");
     startFallbackLoop();
   };
 
   const disconnect = () => stopFallbackLoop();
   const isOpen = () => isReady;
 
-  // Throttled sendFrame - respects MIN_INTERVAL_MS
+  // Smart sendFrame with change detection
   const sendFrame = (base64Jpeg) => {
+    if (!base64Jpeg) return;
+
+    const fingerprint = getFrameFingerprint(base64Jpeg);
+
+    // Skip if image is almost identical to last sent frame
+    if (fingerprint === lastFrameFingerprint) {
+      return;
+    }
+
+    lastFrameFingerprint = fingerprint;
     pendingFrame = base64Jpeg;
   };
 
   const sendAudio = () => {};
-  const sendText = (text) => { pendingText = text; };
+  const sendText = (text) => {
+    pendingText = text;
+  };
 
   return { connect, disconnect, sendFrame, sendAudio, sendText, isOpen };
 }
