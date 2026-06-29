@@ -1,26 +1,26 @@
 // ─── Model notes (June 2026) ──────────────────────────────────────────────────────
-// gemini-2.0-flash-live-001     →  v1alpha WS (Live/Bidi) — may require specific allowlist or regional availability
-// gemini-2.0-flash              →  v1 REST fallback (stable, works on all keys)
-// gemini-1.5-flash              →  REMOVED — do NOT use
+// Live WS is currently unstable for many keys (frequent 1008 errors).
+// REST fallback is more reliable right now.
 // 
-// IMPORTANT: If you see WS 1008 errors, the live model may not be enabled for your API key on v1alpha.
-//            The REST fallback below will then be used.
+// For REST generateContent, the Gemini v1 API expects camelCase:
+//   systemInstruction and generationConfig
+// For WS Live (v1alpha), snake_case is used in the setup message.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
   "https://generativelanguage.googleapis.com/v1/models";
 
-// Stable fallback model for REST (always works)
+// Stable and widely available model for REST fallback
 const FALLBACK_MODEL = "gemini-2.0-flash";
 
-// Live model (try this first). If WS fails with 1008, we gracefully fall back.
+// Live model (will fall back if not available)
 const LIVE_MODEL = "gemini-2.0-flash-live-001";
 
 const RECONNECT_DELAY_MS = 3000;
-const MAX_RECONNECT = 2;
+const MAX_RECONNECT = 1; // reduced to fail faster to REST
 
-// WebSocket close codes that should NOT be retried — go straight to REST.
+// WebSocket close codes that should NOT be retried
 const NO_RETRY_CODES = new Set([1007, 1008, 4001, 4003]);
 
 export function createGeminiLiveClient({
@@ -41,7 +41,6 @@ export function createGeminiLiveClient({
   let isReady = false;
   let usingFallback = false;
 
-  // ── Audio output helpers ────────────────────────────────────────────────
   function getAudioContext() {
     if (!audioCtx || audioCtx.state === "closed") {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)({
@@ -78,7 +77,7 @@ export function createGeminiLiveClient({
     }
   }
 
-  // ── REST fallback ────────────────────────────────────────────────────────
+  // ── REST fallback (more reliable currently) ───────────────────────────────
   let fallbackTimer = null;
   let pendingFrame = null;
   let pendingText = null;
@@ -88,26 +87,28 @@ export function createGeminiLiveClient({
     try {
       const body = {
         contents: [{ role: "user", parts }],
-        // Gemini REST v1 API expects snake_case field names
+        // Gemini REST v1 uses camelCase for these fields
         ...(systemInstruction && {
-          system_instruction: { parts: [{ text: systemInstruction }] },
+          systemInstruction: { parts: [{ text: systemInstruction }] },
         }),
-        generation_config: { temperature: 0.4 },
+        generationConfig: { temperature: 0.4 },
       };
-      const res = await fetch(
-        `${GEMINI_REST_BASE}/${FALLBACK_MODEL}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
+
+      const url = `${GEMINI_REST_BASE}/${FALLBACK_MODEL}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error("[GeminiLive] REST error:", err);
-        onError?.(`Gemini API error: ${err?.error?.message || res.status}`);
+        const errJson = await res.json().catch(() => ({}));
+        console.error("[GeminiLive] REST error details:", errJson);
+        const msg = errJson?.error?.message || `HTTP ${res.status}`;
+        onError?.(`Gemini API error: ${msg}`);
         return;
       }
+
       const data = await res.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) onText?.(text);
@@ -122,9 +123,7 @@ export function createGeminiLiveClient({
     usingFallback = true;
     isReady = true;
     onReady?.();
-    console.info(
-      `[GeminiLive] Live WS unavailable — using REST fallback (${FALLBACK_MODEL})`,
-    );
+    console.info(`[GeminiLive] Using REST fallback (${FALLBACK_MODEL})`);
     fallbackTimer = setInterval(async () => {
       const parts = [];
       if (pendingFrame) {
@@ -148,7 +147,7 @@ export function createGeminiLiveClient({
     usingFallback = false;
   }
 
-  // ── Build WS setup message ──────────────────────────────────────────────
+  // ── WS Live setup (snake_case for v1alpha) ────────────────────────────────
   function buildSetup() {
     const setup = {
       model: `models/${model}`,
@@ -162,13 +161,11 @@ export function createGeminiLiveClient({
       },
     };
     if (systemInstruction) {
-      // WS v1alpha uses snake_case
       setup.system_instruction = { parts: [{ text: systemInstruction }] };
     }
     return { setup };
-    }
+  }
 
-  // ── Core WS connection ──────────────────────────────────────────────────
   function connect() {
     if (!apiKey) {
       onError?.("VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.");
@@ -182,10 +179,7 @@ export function createGeminiLiveClient({
 
     ws.onopen = () => {
       reconnectCount = 0;
-      if (usingFallback) {
-        stopFallbackLoop();
-        console.info("[GeminiLive] WS reconnected — REST fallback cancelled");
-      }
+      if (usingFallback) stopFallbackLoop();
       console.info("[GeminiLive] WS open — sending setup...");
       ws.send(JSON.stringify(buildSetup()));
     };
@@ -195,32 +189,24 @@ export function createGeminiLiveClient({
         const data = JSON.parse(event.data);
         if (data.setupComplete) {
           isReady = true;
-          console.info("[GeminiLive] ✅ Live session ready (WebSocket)");
+          console.info("[GeminiLive] ✅ Live session ready");
           onReady?.();
           return;
         }
         if (data.serverContent?.modelTurn?.parts) {
           data.serverContent.modelTurn.parts.forEach((part) => {
             if (part.text) onText?.(part.text);
-            if (part.inlineData?.mimeType?.startsWith("audio/")) {
-              playPcm16(part.inlineData.data);
-            }
+            if (part.inlineData?.mimeType?.startsWith("audio/")) playPcm16(part.inlineData.data);
           });
         }
-        if (data.serverContent?.outputTranscription?.text) {
-          onText?.(data.serverContent.outputTranscription.text);
-        }
-        if (data.serverContent?.audioChunk) {
-          playPcm16(data.serverContent.audioChunk);
-        }
+        if (data.serverContent?.outputTranscription?.text) onText?.(data.serverContent.outputTranscription.text);
+        if (data.serverContent?.audioChunk) playPcm16(data.serverContent.audioChunk);
       } catch (e) {
         console.warn("[GeminiLive] Parse error:", e);
       }
     };
 
-    ws.onerror = (e) => {
-      console.warn("[GeminiLive] WebSocket error — will attempt fallback", e);
-    };
+    ws.onerror = (e) => console.warn("[GeminiLive] WebSocket error", e);
 
     ws.onclose = (event) => {
       isReady = false;
@@ -228,58 +214,35 @@ export function createGeminiLiveClient({
         onClose?.();
         return;
       }
-      console.warn(
-        `[GeminiLive] WS closed — code: ${event.code}, reason: "${event.reason}"`,
-      );
+      console.warn(`[GeminiLive] WS closed — code: ${event.code}`);
       const shouldNotRetry = NO_RETRY_CODES.has(event.code);
       if (!shouldNotRetry && reconnectCount < MAX_RECONNECT) {
         reconnectCount++;
-        console.warn(`[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`);
         setTimeout(connect, RECONNECT_DELAY_MS);
       } else {
-        console.warn(
-          `[GeminiLive] ${shouldNotRetry ? "Non-retryable error" : "Max retries reached"} — switching to REST fallback`,
-        );
         startFallbackLoop();
       }
     };
   }
 
-  // ── Send helpers ────────────────────────────────────────────────────────
-  const isOpen = () => {
-    if (usingFallback) return isReady;
-    return ws?.readyState === WebSocket.OPEN && isReady;
-  };
+  const isOpen = () => (usingFallback ? isReady : ws?.readyState === WebSocket.OPEN && isReady);
 
   const sendFrame = (base64Jpeg) => {
     if (usingFallback) { pendingFrame = base64Jpeg; return; }
     if (!isOpen()) return;
-    ws.send(JSON.stringify({
-      realtimeInput: {
-        mediaChunks: [{ mimeType: "image/jpeg", data: base64Jpeg }],
-      },
-    }));
+    ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "image/jpeg", data: base64Jpeg }] } }));
   };
 
   const sendAudio = (base64Pcm) => {
     if (usingFallback) return;
     if (!isOpen()) return;
-    ws.send(JSON.stringify({
-      realtimeInput: {
-        mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Pcm }],
-      },
-    }));
+    ws.send(JSON.stringify({ realtimeInput: { mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Pcm }] } }));
   };
 
   const sendText = (text) => {
     if (usingFallback) { pendingText = text; return; }
     if (!isOpen()) return;
-    ws.send(JSON.stringify({
-      clientContent: {
-        turns: [{ role: "user", parts: [{ text }] }],
-        turnComplete: true,
-      },
-    }));
+    ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } }));
   };
 
   const disconnect = () => {
