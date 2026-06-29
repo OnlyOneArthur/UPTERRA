@@ -1,10 +1,12 @@
-// ─── Stable REST mode (workaround for system instruction field) ────────────────
-// The dedicated system_instruction field is currently rejected by the API.
-// Workaround: Prepend the system instruction as the first message in contents.
-// This is a reliable pattern that works across Gemini API versions.
+// ─── Stable REST mode with rate limiting (Option A) ────────────────────────────
+// Increased interval + client-side throttling to stay within free tier limits.
+// Recommended interval: 7-10 seconds for sustainable free tier usage.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_REST_BASE = "https://generativelanguage.googleapis.com/v1/models";
 const MODEL = "gemini-2.0-flash";
+
+const MIN_INTERVAL_MS = 8000; // 8 seconds - good balance for free tier
+
 
 export function createGeminiLiveClient({
   apiKey,
@@ -18,12 +20,12 @@ export function createGeminiLiveClient({
   let pendingFrame = null;
   let pendingText = null;
   let isReady = false;
+  let lastSentTime = 0;
 
   async function restGenerateContent(parts) {
     if (!apiKey || parts.length === 0) return;
 
     try {
-      // Build contents array. Prepend system instruction as first message if present.
       const contents = [];
 
       if (systemInstruction) {
@@ -33,10 +35,7 @@ export function createGeminiLiveClient({
         });
       }
 
-      contents.push({
-        role: "user",
-        parts,
-      });
+      contents.push({ role: "user", parts });
 
       const body = {
         contents,
@@ -71,9 +70,12 @@ export function createGeminiLiveClient({
     if (fallbackTimer) return;
     isReady = true;
     onReady?.();
-    console.info("[GeminiLive] Using stable REST mode (gemini-2.0-flash)");
+    console.info(`[GeminiLive] Using stable REST mode with rate limiting (${MIN_INTERVAL_MS}ms interval)`);
 
     fallbackTimer = setInterval(async () => {
+      const now = Date.now();
+      if (now - lastSentTime < MIN_INTERVAL_MS) return;
+
       const parts = [];
       if (pendingFrame) {
         parts.push({ inlineData: { mimeType: "image/jpeg", data: pendingFrame } });
@@ -84,8 +86,10 @@ export function createGeminiLiveClient({
         pendingText = null;
       }
       if (parts.length === 0) return;
+
+      lastSentTime = now;
       await restGenerateContent(parts);
-    }, 2800);
+    }, 2000); // Check every 2s, but only send if MIN_INTERVAL_MS has passed
   }
 
   function stopFallbackLoop() {
@@ -97,13 +101,18 @@ export function createGeminiLiveClient({
   }
 
   const connect = () => {
-    console.info("[GeminiLive] Starting in REST-only mode");
+    console.info("[GeminiLive] Starting in REST-only mode (rate limited)");
     startFallbackLoop();
   };
 
   const disconnect = () => stopFallbackLoop();
   const isOpen = () => isReady;
-  const sendFrame = (base64Jpeg) => { pendingFrame = base64Jpeg; };
+
+  // Throttled sendFrame - respects MIN_INTERVAL_MS
+  const sendFrame = (base64Jpeg) => {
+    pendingFrame = base64Jpeg;
+  };
+
   const sendAudio = () => {};
   const sendText = (text) => { pendingText = text; };
 
