@@ -1,10 +1,9 @@
-// ─── TEMPORARY STABLE MODE (REST only) ─────────────────────────────────────────
-// Live WS (gemini-2.0-flash-live-001) is currently returning 1008 for many keys.
-// REST fallback with gemini-2.0-flash is more reliable.
-// We are forcing REST-only mode until Google stabilizes the Live model.
+// ─── Stable REST-only mode (working version) ───────────────────────────────────
+// Using snake_case field names because we are doing raw fetch.
+// This matches what the Gemini REST API actually accepts.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_REST_BASE = "https://generativelanguage.googleapis.com/v1/models";
-const FALLBACK_MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.0-flash";
 
 export function createGeminiLiveClient({
   apiKey,
@@ -25,14 +24,14 @@ export function createGeminiLiveClient({
     try {
       const body = {
         contents: [{ role: "user", parts }],
-        // Using camelCase as per Gemini REST v1 spec
+        // Correct field names for raw REST calls (snake_case)
         ...(systemInstruction && {
-          systemInstruction: { parts: [{ text: systemInstruction }] },
+          system_instruction: { parts: [{ text: systemInstruction }] },
         }),
-        generationConfig: { temperature: 0.4 },
+        generation_config: { temperature: 0.4 },
       };
 
-      const url = `${GEMINI_REST_BASE}/${FALLBACK_MODEL}:generateContent?key=${apiKey}`;
+      const url = `${GEMINI_REST_BASE}/${MODEL}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,7 +41,7 @@ export function createGeminiLiveClient({
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         console.error("[GeminiLive] REST ERROR (full):", JSON.stringify(errJson, null, 2));
-        const msg = errJson?.error?.message || `HTTP error ${res.status}`;
+        const msg = errJson?.error?.message || `HTTP ${res.status}`;
         onError?.(`Gemini API error: ${msg}`);
         return;
       }
@@ -85,20 +84,15 @@ export function createGeminiLiveClient({
     isReady = false;
   }
 
-  // Public API (same as before for compatibility)
   const connect = () => {
     console.info("[GeminiLive] Starting in REST-only mode");
     startFallbackLoop();
   };
 
-  const disconnect = () => {
-    stopFallbackLoop();
-  };
-
+  const disconnect = () => stopFallbackLoop();
   const isOpen = () => isReady;
-
   const sendFrame = (base64Jpeg) => { pendingFrame = base64Jpeg; };
-  const sendAudio = () => {}; // not used in REST mode
+  const sendAudio = () => {};
   const sendText = (text) => { pendingText = text; };
 
   return { connect, disconnect, sendFrame, sendAudio, sendText, isOpen };
