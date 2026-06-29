@@ -1,17 +1,21 @@
 // ─── Model notes (June 2026) ──────────────────────────────────────────────────────
-// gemini-2.0-flash-live-001     →  v1alpha WS, GA, available on all API keys
-// gemini-2.5-flash-live-preview →  v1alpha WS, preview (restricted access)
-// gemini-2.0-flash              →  v1 REST fallback, available on all keys
+// gemini-2.0-flash-live-001     →  v1alpha WS (Live/Bidi) — may require specific allowlist or regional availability
+// gemini-2.0-flash              →  v1 REST fallback (stable, works on all keys)
 // gemini-1.5-flash              →  REMOVED — do NOT use
+// 
+// IMPORTANT: If you see WS 1008 errors, the live model may not be enabled for your API key on v1alpha.
+//            The REST fallback below will then be used.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
   "https://generativelanguage.googleapis.com/v1/models";
 
-// Use the GA stable live model — works on all API keys without allowlist
-const LIVE_MODEL = "gemini-2.0-flash-live-001";
+// Stable fallback model for REST (always works)
 const FALLBACK_MODEL = "gemini-2.0-flash";
+
+// Live model (try this first). If WS fails with 1008, we gracefully fall back.
+const LIVE_MODEL = "gemini-2.0-flash-live-001";
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
@@ -84,11 +88,11 @@ export function createGeminiLiveClient({
     try {
       const body = {
         contents: [{ role: "user", parts }],
-        // REST v1 uses camelCase: systemInstruction (NOT system_instruction)
+        // Gemini REST v1 API expects snake_case field names
         ...(systemInstruction && {
-          systemInstruction: { parts: [{ text: systemInstruction }] },
+          system_instruction: { parts: [{ text: systemInstruction }] },
         }),
-        generationConfig: { temperature: 0.4 },
+        generation_config: { temperature: 0.4 },
       };
       const res = await fetch(
         `${GEMINI_REST_BASE}/${FALLBACK_MODEL}:generateContent?key=${apiKey}`,
@@ -158,11 +162,11 @@ export function createGeminiLiveClient({
       },
     };
     if (systemInstruction) {
-      // WS v1alpha uses snake_case for setup
+      // WS v1alpha uses snake_case
       setup.system_instruction = { parts: [{ text: systemInstruction }] };
     }
     return { setup };
-  }
+    }
 
   // ── Core WS connection ──────────────────────────────────────────────────
   function connect() {
