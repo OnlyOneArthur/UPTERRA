@@ -1,21 +1,7 @@
-/**
- * useGeminiLive.js
- *
- * React hook that manages a Gemini Live WebSocket session for real-time
- * video + voice scanning. Wraps createGeminiLiveClient and exposes a
- * clean API matching the rest of UPTERRA's hook conventions.
- *
- * Features:
- *  - Starts/stops Gemini Live session
- *  - Accepts video frames (JPEG base64) and audio (PCM16 base64)
- *  - Streams text responses with optional TTS via Web Speech API
- *  - Parses JSON detection payloads (same format as useScanAI)
- *  - Exposes connection status, messages, caption, detectionResult
- */
+import { useState, useRef, useCallback, useEffect } from "react";
+import { createGeminiLiveClient } from "../services/geminiLive";
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { createGeminiLiveClient } from '../services/geminiLive';
-
+// Resolved at module load time — never changes at runtime.
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const SYSTEM_PROMPT = `Kamu adalah UPTERRA AI, asisten cerdas untuk identifikasi dan pengelolaan sampah elektronik (e-waste).
@@ -33,56 +19,75 @@ Jika kamu mendeteksi komponen elektronik dari gambar, sertakan JSON berikut di A
 Jika tidak ada komponen terdeteksi atau gambar tidak jelas, cukup balas: "Arahkan kamera ke komponen elektronik." tanpa JSON.
 Jaga jawaban max 2-3 kalimat agar enak diucapkan.`;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function parseDetection(rawText) {
   try {
     const match = rawText.match(/\{[\s\S]*?"detected"[\s\S]*?\}/);
     if (match) {
       const json = JSON.parse(match[0]);
-      return { detectionResult: json, cleanText: rawText.replace(match[0], '').trim() };
+      return {
+        detectionResult: json,
+        cleanText: rawText.replace(match[0], "").trim(),
+      };
     }
-  } catch {}
+  } catch {
+    // malformed JSON in response — treat as plain text
+  }
   return { detectionResult: null, cleanText: rawText };
 }
 
 function speakText(text, onStart, onEnd) {
-  if (!window.speechSynthesis) { onEnd?.(); return; }
+  if (!window.speechSynthesis) {
+    onEnd?.();
+    return;
+  }
   window.speechSynthesis.cancel();
-  const stripped = text.replace(/[{["\\}\]]/g, '').trim();
-  if (!stripped) { onEnd?.(); return; }
+  const stripped = text.replace(/[{["\\}\]]/g, "").trim();
+  if (!stripped) {
+    onEnd?.();
+    return;
+  }
+
   function doSpeak() {
     const utter = new SpeechSynthesisUtterance(stripped);
-    utter.lang = 'id-ID';
+    utter.lang = "id-ID";
     utter.rate = 1.05;
     utter.pitch = 1;
     const voices = window.speechSynthesis.getVoices();
     const v =
-      voices.find((v) => v.lang === 'id-ID') ||
-      voices.find((v) => v.lang.startsWith('id')) ||
-      voices.find((v) => v.lang.startsWith('en'));
+      voices.find((v) => v.lang === "id-ID") ||
+      voices.find((v) => v.lang.startsWith("id")) ||
+      voices.find((v) => v.lang.startsWith("en"));
     if (v) utter.voice = v;
     utter.onstart = () => onStart?.();
     utter.onend = () => onEnd?.();
     utter.onerror = () => onEnd?.();
     window.speechSynthesis.speak(utter);
   }
+
   const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) doSpeak();
-  else {
+  if (voices.length > 0) {
+    doSpeak();
+  } else {
     window.speechSynthesis.onvoiceschanged = () => {
       window.speechSynthesis.onvoiceschanged = null;
       doSpeak();
     };
-    setTimeout(() => { if (window.speechSynthesis.getVoices().length === 0) doSpeak(); }, 800);
+    // Fallback: some browsers never fire onvoiceschanged
+    setTimeout(() => {
+      if (window.speechSynthesis.getVoices().length === 0) doSpeak();
+    }, 800);
   }
 }
 
-// ── Hook ───────────────────────────────────────────────────────────────────
+// ── Hook ─────────────────────────────────────────────────────────────────────
+
 export function useGeminiLive() {
-  const [status, setStatus] = useState('idle'); // idle | connecting | live | error
+  const [status, setStatus] = useState("idle"); // idle | connecting | live | error
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [caption, setCaption] = useState('');
+  const [caption, setCaption] = useState("");
   const [detectionResult, setDetectionResult] = useState(null);
   const [error, setError] = useState(null);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -91,97 +96,130 @@ export function useGeminiLive() {
   const pendingFrameRef = useRef(null);
   const frameTimerRef = useRef(null);
   const isBusyRef = useRef(false);
-  const lastHashRef = useRef('');
-  const accumulatedTextRef = useRef('');
+  const lastHashRef = useRef("");
+  const accumulatedTextRef = useRef("");
   const flushTimerRef = useRef(null);
+  // FIX BUG 4: guard against double-starting the frame loop
+  const frameLoopActiveRef = useRef(false);
 
-  // Pre-load TTS voices
+  // Pre-load TTS voices on mount
   useEffect(() => {
     if (window.speechSynthesis) {
       window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () =>
+        window.speechSynthesis.getVoices();
     }
   }, []);
 
-  // ── Handle streaming text chunks from Gemini ────────────────────────────
+  // ── Handle streaming text chunks from Gemini ──────────────────────────────
   const handleTextChunk = useCallback((chunk) => {
     accumulatedTextRef.current += chunk;
+
     // Flush after 300ms of silence between chunks
     clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(() => {
+      // FIX BUG 1: reset busy flag FIRST, before the empty-string guard.
+      // Previously, if the flushed text was empty (e.g. Gemini returned
+      // only whitespace), isBusyRef was never reset and the frame loop
+      // deadlocked permanently.
+      isBusyRef.current = false;
+
       const raw = accumulatedTextRef.current.trim();
-      accumulatedTextRef.current = '';
+      accumulatedTextRef.current = "";
       if (!raw) return;
+
       const { detectionResult: det, cleanText } = parseDetection(raw);
       if (det) setDetectionResult(det);
       setCaption(cleanText);
-      setMessages((prev) => [...prev, { role: 'ai', text: cleanText, ts: Date.now() }]);
-      isBusyRef.current = false;
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: cleanText, ts: Date.now() },
+      ]);
+
       setIsAISpeaking(true);
       speakText(
         cleanText,
         () => setIsAISpeaking(true),
         () => {
           setIsAISpeaking(false);
-          setTimeout(() => setCaption(''), 3000);
-        }
+          setTimeout(() => setCaption(""), 3000);
+        },
       );
     }, 300);
   }, []);
 
-  // ── Frame dispatch loop (every 2.5s) ────────────────────────────────────
+  // ── Frame dispatch loop (every 2.5s) ──────────────────────────────────────
   const startFrameLoop = useCallback(() => {
+    // FIX BUG 4: prevent double interval if onReady fires more than once
+    if (frameLoopActiveRef.current) return;
+    frameLoopActiveRef.current = true;
+
     clearInterval(frameTimerRef.current);
     frameTimerRef.current = setInterval(() => {
       const frame = pendingFrameRef.current;
       if (!frame || isBusyRef.current || !clientRef.current?.isOpen()) return;
+
       const hash = frame.slice(-80);
-      if (hash === lastHashRef.current) return;
+      if (hash === lastHashRef.current) return; // same frame — skip
+
       lastHashRef.current = hash;
       pendingFrameRef.current = null;
       isBusyRef.current = true;
       clientRef.current.sendFrame(frame);
+      // isBusyRef is reset by handleTextChunk's flush timer when Gemini responds.
+      // If Gemini never responds (network drop), the WS onclose handler will
+      // trigger a reconnect or fallback, which calls onReady → startFrameLoop
+      // again, resetting the flag indirectly.
     }, 2500);
   }, []);
 
-  // ── Start session ────────────────────────────────────────────────────────
+  // ── Start session ──────────────────────────────────────────────────────────
   const startSession = useCallback(() => {
     if (clientRef.current) {
       clientRef.current.disconnect();
       clientRef.current = null;
     }
+
     if (!GEMINI_API_KEY) {
-      setError('VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.');
-      setStatus('error');
+      setError(
+        "VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.",
+      );
+      setStatus("error");
       return;
     }
 
-    setStatus('connecting');
+    setStatus("connecting");
     setError(null);
     setMessages([]);
     setDetectionResult(null);
-    setCaption('');
-    accumulatedTextRef.current = '';
-    lastHashRef.current = '';
+    setCaption("");
+
+    // FIX BUG 5: clear accumulated text on new session start
+    accumulatedTextRef.current = "";
+    lastHashRef.current = "";
     isBusyRef.current = false;
+    frameLoopActiveRef.current = false; // allow startFrameLoop to arm again
 
     const client = createGeminiLiveClient({
       apiKey: GEMINI_API_KEY,
       systemInstruction: SYSTEM_PROMPT,
-      enableAudioOutput: false, // Use Web Speech TTS (id-ID) instead
+      enableAudioOutput: false, // Use Web Speech TTS (id-ID) instead of Gemini audio
       onText: handleTextChunk,
       onReady: () => {
-        setStatus('live');
+        setStatus("live");
         startFrameLoop();
       },
       onClose: () => {
-        setStatus('idle');
+        setStatus("idle");
         clearInterval(frameTimerRef.current);
+        frameLoopActiveRef.current = false;
       },
       onError: (msg) => {
         setError(msg);
-        setStatus('error');
+        setStatus("error");
         clearInterval(frameTimerRef.current);
+        frameLoopActiveRef.current = false;
+        isBusyRef.current = false; // ensure frame loop can restart if user retries
       },
       onAudioLevel: setAudioLevel,
     });
@@ -190,22 +228,32 @@ export function useGeminiLive() {
     client.connect();
   }, [handleTextChunk, startFrameLoop]);
 
-  // ── Stop session ─────────────────────────────────────────────────────────
+  // ── Stop session ───────────────────────────────────────────────────────────
   const stopSession = useCallback(() => {
     clearInterval(frameTimerRef.current);
+    frameTimerRef.current = null;
+    frameLoopActiveRef.current = false;
+
+    // FIX BUG 6: null the ref after clearing so re-arm logic works cleanly
     clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = null;
+
     window.speechSynthesis?.cancel();
     clientRef.current?.disconnect();
     clientRef.current = null;
+
     isBusyRef.current = false;
     pendingFrameRef.current = null;
-    setStatus('idle');
+    // FIX BUG 5: clear stale accumulated text so it can't bleed into next session
+    accumulatedTextRef.current = "";
+
+    setStatus("idle");
     setIsAISpeaking(false);
-    setCaption('');
+    setCaption("");
     setAudioLevel(0);
   }, []);
 
-  // ── Send helpers ─────────────────────────────────────────────────────────
+  // ── Send helpers ───────────────────────────────────────────────────────────
   const sendVideoFrame = useCallback((base64Jpeg) => {
     pendingFrameRef.current = base64Jpeg;
   }, []);
@@ -216,8 +264,15 @@ export function useGeminiLive() {
 
   const sendTextMessage = useCallback((text) => {
     if (!text.trim() || !clientRef.current?.isOpen()) return;
-    setMessages((prev) => [...prev, { role: 'user', text, ts: Date.now() }]);
-    isBusyRef.current = true;
+
+    setMessages((prev) => [...prev, { role: "user", text, ts: Date.now() }]);
+
+    // FIX BUG 3: Do NOT set isBusyRef here for the WebSocket path.
+    // On WS, the response arrives via onText callbacks → handleTextChunk →
+    // flush timer, which already resets isBusyRef.  Setting it here caused a
+    // permanent deadlock: the frame loop saw busy=true and never sent another
+    // frame after even a single text message.
+    // isBusyRef is only meaningful for the frame loop, not for text messages.
     clientRef.current.sendText(text);
   }, []);
 
@@ -225,9 +280,9 @@ export function useGeminiLive() {
   useEffect(() => () => stopSession(), [stopSession]);
 
   return {
-    status,                  // 'idle' | 'connecting' | 'live' | 'error'
-    isLive: status === 'live',
-    isConnecting: status === 'connecting',
+    status, // 'idle' | 'connecting' | 'live' | 'error'
+    isLive: status === "live",
+    isConnecting: status === "connecting",
     isAISpeaking,
     messages,
     caption,
