@@ -1,27 +1,24 @@
-// ─── Endpoint: v1beta is required for gemini-2.0-flash-live-001 ──────────────
+// ─── CONFIRMED working combination (June 2026) ───────────────────────────────
+// gemini-2.5-flash-live-preview  →  requires v1alpha endpoint, supports TEXT
+// gemini-3.1-flash-live-preview  →  v1beta BUT only supports AUDIO, not TEXT
+// gemini-2.0-flash-live-001      →  deprecated/removed from both endpoints
+// ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_WS_BASE =
-  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 
-// gemini-2.0-flash-live-001 is the stable Live/bidiGenerateContent model on v1beta.
-// gemini-2.0-flash-exp and gemini-3.1-flash-live-preview are NOT available on v1beta.
-const LIVE_MODEL = "gemini-2.0-flash-live-001";
-
-// gemini-1.5-flash is highly available and rarely hits 503.
-// Avoid gemini-2.5-flash for the fallback — it gets overloaded easily.
+const LIVE_MODEL = "gemini-2.5-flash-live-preview";
 const FALLBACK_MODEL = "gemini-1.5-flash";
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
 
-// WebSocket close codes that indicate an auth / policy rejection.
-// These should NOT be retried — go straight to REST fallback.
-const AUTH_CLOSE_CODES = new Set([
-  1008, // Policy Violation — Google's key-rejection code
-  4001, // Unauthorized (custom Google range)
-  4003, // Forbidden (custom Google range)
-]);
+// WebSocket close codes that should NOT be retried — go straight to REST.
+// 1007 = Unsupported modality (e.g. TEXT on audio-only model)
+// 1008 = Policy Violation / key rejection
+// 4001/4003 = Unauthorized / Forbidden
+const NO_RETRY_CODES = new Set([1007, 1008, 4001, 4003]);
 
 export function createGeminiLiveClient({
   apiKey,
@@ -118,29 +115,22 @@ export function createGeminiLiveClient({
 
   function startFallbackLoop() {
     if (fallbackTimer) return;
-
     usingFallback = true;
     isReady = true;
     onReady?.();
     console.info(
       `[GeminiLive] Live WS unavailable — using REST fallback (${FALLBACK_MODEL})`,
     );
-
     fallbackTimer = setInterval(async () => {
       const parts = [];
-
       if (pendingFrame) {
-        parts.push({
-          inlineData: { mimeType: "image/jpeg", data: pendingFrame },
-        });
+        parts.push({ inlineData: { mimeType: "image/jpeg", data: pendingFrame } });
         pendingFrame = null;
       }
-
       if (pendingText) {
         parts.push({ text: pendingText });
         pendingText = null;
       }
-
       if (parts.length === 0) return;
       await restGenerateContent(parts);
     }, 3000);
@@ -176,9 +166,7 @@ export function createGeminiLiveClient({
   // ── Core WS connection ──────────────────────────────────────────────────
   function connect() {
     if (!apiKey) {
-      onError?.(
-        "VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.",
-      );
+      onError?.("VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.");
       return;
     }
     intentionalClose = false;
@@ -200,14 +188,12 @@ export function createGeminiLiveClient({
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-
         if (data.setupComplete) {
           isReady = true;
           console.info("[GeminiLive] ✅ Live session ready (WebSocket)");
           onReady?.();
           return;
         }
-
         if (data.serverContent?.modelTurn?.parts) {
           data.serverContent.modelTurn.parts.forEach((part) => {
             if (part.text) onText?.(part.text);
@@ -216,11 +202,9 @@ export function createGeminiLiveClient({
             }
           });
         }
-
         if (data.serverContent?.outputTranscription?.text) {
           onText?.(data.serverContent.outputTranscription.text);
         }
-
         if (data.serverContent?.audioChunk) {
           playPcm16(data.serverContent.audioChunk);
         }
@@ -239,22 +223,17 @@ export function createGeminiLiveClient({
         onClose?.();
         return;
       }
-
       console.warn(
         `[GeminiLive] WS closed — code: ${event.code}, reason: "${event.reason}"`,
       );
-
-      const isAuthError = AUTH_CLOSE_CODES.has(event.code);
-
-      if (!isAuthError && reconnectCount < MAX_RECONNECT) {
+      const shouldNotRetry = NO_RETRY_CODES.has(event.code);
+      if (!shouldNotRetry && reconnectCount < MAX_RECONNECT) {
         reconnectCount++;
-        console.warn(
-          `[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`,
-        );
+        console.warn(`[GeminiLive] Reconnecting (${reconnectCount}/${MAX_RECONNECT})...`);
         setTimeout(connect, RECONNECT_DELAY_MS);
       } else {
         console.warn(
-          `[GeminiLive] ${isAuthError ? "Auth error" : "Max retries reached"} — switching to REST fallback`,
+          `[GeminiLive] ${shouldNotRetry ? "Non-retryable error" : "Max retries reached"} — switching to REST fallback`,
         );
         startFallbackLoop();
       }
@@ -268,46 +247,34 @@ export function createGeminiLiveClient({
   };
 
   const sendFrame = (base64Jpeg) => {
-    if (usingFallback) {
-      pendingFrame = base64Jpeg;
-      return;
-    }
+    if (usingFallback) { pendingFrame = base64Jpeg; return; }
     if (!isOpen()) return;
-    ws.send(
-      JSON.stringify({
-        realtimeInput: {
-          mediaChunks: [{ mimeType: "image/jpeg", data: base64Jpeg }],
-        },
-      }),
-    );
+    ws.send(JSON.stringify({
+      realtimeInput: {
+        mediaChunks: [{ mimeType: "image/jpeg", data: base64Jpeg }],
+      },
+    }));
   };
 
   const sendAudio = (base64Pcm) => {
     if (usingFallback) return;
     if (!isOpen()) return;
-    ws.send(
-      JSON.stringify({
-        realtimeInput: {
-          mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Pcm }],
-        },
-      }),
-    );
+    ws.send(JSON.stringify({
+      realtimeInput: {
+        mediaChunks: [{ mimeType: "audio/pcm;rate=16000", data: base64Pcm }],
+      },
+    }));
   };
 
   const sendText = (text) => {
-    if (usingFallback) {
-      pendingText = text;
-      return;
-    }
+    if (usingFallback) { pendingText = text; return; }
     if (!isOpen()) return;
-    ws.send(
-      JSON.stringify({
-        clientContent: {
-          turns: [{ role: "user", parts: [{ text }] }],
-          turnComplete: true,
-        },
-      }),
-    );
+    ws.send(JSON.stringify({
+      clientContent: {
+        turns: [{ role: "user", parts: [{ text }] }],
+        turnComplete: true,
+      },
+    }));
   };
 
   const disconnect = () => {
@@ -320,12 +287,5 @@ export function createGeminiLiveClient({
     isReady = false;
   };
 
-  return {
-    connect,
-    sendFrame,
-    sendAudio,
-    sendText,
-    disconnect,
-    isOpen: () => isOpen(),
-  };
+  return { connect, sendFrame, sendAudio, sendText, disconnect, isOpen: () => isOpen() };
 }
