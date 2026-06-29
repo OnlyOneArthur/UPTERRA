@@ -1,6 +1,7 @@
-// ─── Stable REST-only mode (working version) ───────────────────────────────────
-// Using snake_case field names because we are doing raw fetch.
-// This matches what the Gemini REST API actually accepts.
+// ─── Stable REST mode (workaround for system instruction field) ────────────────
+// The dedicated system_instruction field is currently rejected by the API.
+// Workaround: Prepend the system instruction as the first message in contents.
+// This is a reliable pattern that works across Gemini API versions.
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_REST_BASE = "https://generativelanguage.googleapis.com/v1/models";
 const MODEL = "gemini-2.0-flash";
@@ -22,12 +23,23 @@ export function createGeminiLiveClient({
     if (!apiKey || parts.length === 0) return;
 
     try {
+      // Build contents array. Prepend system instruction as first message if present.
+      const contents = [];
+
+      if (systemInstruction) {
+        contents.push({
+          role: "user",
+          parts: [{ text: systemInstruction }],
+        });
+      }
+
+      contents.push({
+        role: "user",
+        parts,
+      });
+
       const body = {
-        contents: [{ role: "user", parts }],
-        // Correct field names for raw REST calls (snake_case)
-        ...(systemInstruction && {
-          system_instruction: { parts: [{ text: systemInstruction }] },
-        }),
+        contents,
         generation_config: { temperature: 0.4 },
       };
 
