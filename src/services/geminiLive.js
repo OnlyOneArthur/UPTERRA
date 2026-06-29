@@ -1,15 +1,15 @@
 // ─── CONFIRMED working combination (June 2026) ───────────────────────────────
 // gemini-2.5-flash-live-preview  →  requires v1alpha endpoint, supports TEXT
-// gemini-3.1-flash-live-preview  →  v1beta BUT only supports AUDIO, not TEXT
-// gemini-2.0-flash-live-001      →  deprecated/removed from both endpoints
+// gemini-2.0-flash               →  v1 endpoint, REST fallback for generateContent
+// gemini-1.5-flash               →  REMOVED from v1beta — do NOT use
 // ─────────────────────────────────────────────────────────────────────────────
 const GEMINI_WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
-  "https://generativelanguage.googleapis.com/v1beta/models";
+  "https://generativelanguage.googleapis.com/v1/models";
 
 const LIVE_MODEL = "gemini-2.5-flash-live-preview";
-const FALLBACK_MODEL = "gemini-1.5-flash";
+const FALLBACK_MODEL = "gemini-2.0-flash";
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
