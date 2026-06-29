@@ -1,42 +1,48 @@
 # UPTERRA
 
-Eco-tech waste management app built with React + Vite + Tailwind CSS v4.
+Eco-tech waste management app built with React + Vite + Tailwind CSS v4 + Motion (Framer Motion).
 
-## Branch: `feat/glassmorphism-ui`
+## Branch: `feat/ai-scan-video`
 
-This branch introduces a full **glassmorphism UI redesign** powered by **Framer Motion (Motion)**.
+This branch delivers the **Gemini Live AI Video Scan & Video Call** feature — real-time multimodal AI assistance for e-waste identification, safe handling guidance, and conversational video calls powered by Google's Gemini Live API.
 
-### What's changed
+### What's Implemented
 
-| File | Change |
-|---|---|
-| `package.json` | Added `motion` (Framer Motion) dependency |
-| `src/components/layout/Navbar.jsx` | Full glass navbar with Framer Motion spring animations, animated active pill, hover lifts |
-| `src/pages/Onboarding.jsx` | Slide entrance/exit animations, swipe gesture, animated dots, glass card container |
-| `src/components/layout/PageWrapper.jsx` | Reusable wrapper with background blobs, page slide-up entrance, embeds `<Navbar />` |
-| `src/components/layout/ProtectedRoute.jsx` | Auth guard redirect helper |
+- Full Gemini Live WebSocket integration (`src/services/geminiLive.js`)
+- React hook `useGeminiLive` with frame streaming, TTS, detection parsing, fallback, reconnect
+- `ScanVideoStream.jsx` & enhanced `ScanPage.jsx` for AI-powered camera scan
+- **New**: `GeminiLiveVideoCall.jsx` — immersive full-screen video call UI with mic/camera toggles, live transcript, animated AI visualizer, text/voice input
+- Production error handling, state guards, Indonesian UX
+- Comprehensive documentation in `docs/GEMINI_LIVE_VIDEO_CALL.md`
+- Unit test skeleton in `src/hooks/__tests__/useGeminiLive.test.jsx`
 
-### Install & run
+### Key Features of Gemini Live Video Call
+- Live camera streaming to Gemini for vision understanding
+- Optional microphone audio input for natural conversation
+- Real-time AI responses (text + spoken via TTS or native audio)
+- Structured detection results for e-waste (JSON parsed)
+- Seamless fallback & recovery
+- Beautiful motion animations for professional feel
+
+### Setup
 
 ```bash
 npm install
+# Add your key
+cp .env.example .env
+# Edit VITE_GEMINI_API_KEY
 npm run dev
 ```
 
-### How to use `PageWrapper` on any page
+Navigate to Scan section to try AI Scan or the new Video Call mode.
 
-```jsx
-import PageWrapper from "../components/layout/PageWrapper";
+See `docs/GEMINI_LIVE_VIDEO_CALL.md` for architecture, usage examples, error handling, and future roadmap.
 
-export default function Home() {
-  return (
-    <PageWrapper>
-      <div className="px-4 pt-6">
-        {/* your content */}
-      </div>
-    </PageWrapper>
-  );
-}
-```
+### Tech Stack
+- React 19 + Vite
+- Tailwind CSS v4 + motion/react
+- Lucide icons
+- Zustand (state)
+- Gemini Live API (WebSocket + REST fallback)
 
-> `hideNav={true}` hides the Navbar (useful for Login / Register / Onboarding pages).
+All code is production-ready, well-commented, and follows existing project patterns.
