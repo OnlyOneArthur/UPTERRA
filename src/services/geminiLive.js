@@ -1,10 +1,16 @@
+// ─── Endpoint: v1beta is required for gemini-2.0-flash-live-001 ──────────────
 const GEMINI_WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 const GEMINI_REST_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 
-const LIVE_MODEL = "gemini-2.0-flash-exp";
-const FALLBACK_MODEL = "gemini-2.5-flash";
+// gemini-2.0-flash-live-001 is the stable Live/bidiGenerateContent model on v1beta.
+// gemini-2.0-flash-exp and gemini-3.1-flash-live-preview are NOT available on v1beta.
+const LIVE_MODEL = "gemini-2.0-flash-live-001";
+
+// gemini-1.5-flash is highly available and rarely hits 503.
+// Avoid gemini-2.5-flash for the fallback — it gets overloaded easily.
+const FALLBACK_MODEL = "gemini-1.5-flash";
 
 const RECONNECT_DELAY_MS = 3000;
 const MAX_RECONNECT = 2;
@@ -111,7 +117,6 @@ export function createGeminiLiveClient({
   }
 
   function startFallbackLoop() {
-    // FIX BUG 4: guard against double-firing onReady / double interval
     if (fallbackTimer) return;
 
     usingFallback = true;
@@ -125,9 +130,6 @@ export function createGeminiLiveClient({
       const parts = [];
 
       if (pendingFrame) {
-        // FIX BUG 1: use camelCase keys — the Gemini REST v1beta API requires
-        // `inlineData` / `mimeType`, NOT `inline_data` / `mime_type`.
-        // snake_case silently drops the image, causing every scan to fail.
         parts.push({
           inlineData: { mimeType: "image/jpeg", data: pendingFrame },
         });
@@ -187,8 +189,6 @@ export function createGeminiLiveClient({
 
     ws.onopen = () => {
       reconnectCount = 0;
-      // FIX BUG 4: if a retry succeeded while the fallback loop had already
-      // started, cancel the fallback so we don't double-dispatch frames.
       if (usingFallback) {
         stopFallbackLoop();
         console.info("[GeminiLive] WS reconnected — REST fallback cancelled");
@@ -244,11 +244,6 @@ export function createGeminiLiveClient({
         `[GeminiLive] WS closed — code: ${event.code}, reason: "${event.reason}"`,
       );
 
-      // FIX BUG 3: Use an explicit set of auth/policy codes instead of the
-      // previous `>= 4000` range.  The old range wrongly treated all custom
-      // Google codes (including retryable quota errors) as auth failures and
-      // jumped to fallback immediately.  Code 1008 ("Policy Violation") is
-      // the actual key-rejection code Google sends.
       const isAuthError = AUTH_CLOSE_CODES.has(event.code);
 
       if (!isAuthError && reconnectCount < MAX_RECONNECT) {
@@ -274,7 +269,7 @@ export function createGeminiLiveClient({
 
   const sendFrame = (base64Jpeg) => {
     if (usingFallback) {
-      pendingFrame = base64Jpeg; // consumed by the interval loop
+      pendingFrame = base64Jpeg;
       return;
     }
     if (!isOpen()) return;
@@ -288,7 +283,7 @@ export function createGeminiLiveClient({
   };
 
   const sendAudio = (base64Pcm) => {
-    if (usingFallback) return; // REST fallback has no audio path
+    if (usingFallback) return;
     if (!isOpen()) return;
     ws.send(
       JSON.stringify({
@@ -301,12 +296,6 @@ export function createGeminiLiveClient({
 
   const sendText = (text) => {
     if (usingFallback) {
-      // FIX BUG 2: only set pendingText — do NOT call restGenerateContent()
-      // directly here.  The interval loop batches pendingText + pendingFrame
-      // together on its next tick.  Calling restGenerateContent() here as well
-      // caused two parallel REST calls when a text message arrived while a
-      // frame was also queued, and the frame was consumed by the direct call
-      // leaving the interval with nothing to send.
       pendingText = text;
       return;
     }
@@ -323,8 +312,6 @@ export function createGeminiLiveClient({
 
   const disconnect = () => {
     intentionalClose = true;
-    // FIX BUG 5: stop fallback loop BEFORE nulling ws/audioCtx so the
-    // interval doesn't fire one last time after teardown.
     stopFallbackLoop();
     audioCtx?.close().catch(() => {});
     audioCtx = null;
