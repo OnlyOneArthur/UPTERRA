@@ -5,7 +5,7 @@ import BottomNav from "../components/layout/BottomNav";
 import { useGeminiLive } from "../hooks/useGeminiLive";
 import "../styles/scan.css";
 
-function getSupportedMimeType() {
+function getSupportedVideoMimeType() {
   const candidates = [
     "video/webm;codecs=vp8,opus",
     "video/webm;codecs=vp8",
@@ -17,15 +17,27 @@ function getSupportedMimeType() {
   return "";
 }
 
+function getSupportedAudioMimeType() {
+  const candidates = ["audio/webm;codecs=opus", "audio/webm"];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return "";
+}
+
 export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [mode, setMode] = useState("video"); // 'video' | 'voice'
   const [cameraActive, setCameraActive] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [sessionRecordingUrl, setSessionRecordingUrl] = useState(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const cameraStreamRef = useRef(null);
+  const micOnlyStreamRef = useRef(null);
+  const recordingStartedRef = useRef(false);
 
   const {
     status,
@@ -86,51 +98,29 @@ export default function ScanPage() {
     setTimeout(() => video.play().catch(() => {}), 350);
   }, []);
 
+  // Camera hardware is only ever acquired while mode === 'video'. Switching
+  // to voice mode tears the track down completely (camera light turns off),
+  // rather than just hiding the <video> element. Switching back re-acquires.
   useEffect(() => {
-    let localStream = null;
+    if (mode !== "video") {
+      if (videoRef.current) videoRef.current.srcObject = null;
+      return;
+    }
 
-    const initMediaRecorder = (stream) => {
-      const mimeType = getSupportedMimeType();
-      try {
-        const options = mimeType ? { mimeType } : {};
-        const recorder = new MediaRecorder(stream, options);
-        mediaRecorderRef.current = recorder;
-        recordedChunksRef.current = [];
-
-        recorder.ondataavailable = (evt) => {
-          if (evt.data && evt.data.size > 0) {
-            recordedChunksRef.current.push(evt.data);
-          }
-        };
-
-        recorder.onstop = () => {
-          if (!recordedChunksRef.current.length) return;
-          const blob = new Blob(recordedChunksRef.current, {
-            type: mimeType || "video/webm",
-          });
-          setSessionRecordingUrl(URL.createObjectURL(blob));
-        };
-
-        console.info(
-          "[ScanPage] MediaRecorder ready, mimeType:",
-          recorder.mimeType,
-        );
-      } catch (err) {
-        console.warn(
-          "[ScanPage] MediaRecorder init failed — recording disabled",
-          err,
-        );
-        mediaRecorderRef.current = null;
-      }
-    };
+    let cancelled = false;
+    let stream = null;
 
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: false })
       .then((s) => {
-        localStream = s;
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        cameraStreamRef.current = s;
         setCameraActive(true);
         attachStream(s);
-        initMediaRecorder(s);
       })
       .catch((err) => {
         console.error(
@@ -142,35 +132,120 @@ export default function ScanPage() {
       });
 
     return () => {
-      localStream?.getTracks().forEach((t) => t.stop());
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
+      cancelled = true;
+      stream?.getTracks().forEach((t) => t.stop());
+      cameraStreamRef.current = null;
+      setCameraActive(false);
     };
-  }, [attachStream]);
+  }, [mode, attachStream]);
 
-  useEffect(() => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder) return;
+  const startRecorderFor = useCallback((stream, sourceType) => {
+    const mimeType =
+      sourceType === "video"
+        ? getSupportedVideoMimeType()
+        : getSupportedAudioMimeType();
+    try {
+      const options = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, options);
+      recorder.__source = sourceType;
 
-    if (sessionActive && recorder.state === "inactive") {
-      recordedChunksRef.current = [];
-      try {
-        recorder.start();
-      } catch (err) {
-        console.warn("[ScanPage] recorder.start failed", err);
-      }
-    } else if (!sessionActive && recorder.state === "recording") {
-      try {
-        recorder.stop();
-      } catch (err) {
-        console.warn("[ScanPage] recorder.stop failed", err);
-      }
+      recorder.ondataavailable = (evt) => {
+        if (evt.data && evt.data.size > 0) {
+          recordedChunksRef.current.push(evt.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        if (!recordedChunksRef.current.length) return;
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
+        setSessionRecordingUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(blob);
+        });
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      console.info(
+        "[ScanPage] recording from",
+        sourceType,
+        "mimeType:",
+        recorder.mimeType,
+      );
+    } catch (err) {
+      console.warn(
+        "[ScanPage] MediaRecorder init failed — recording disabled",
+        err,
+      );
+      mediaRecorderRef.current = null;
     }
-  }, [sessionActive]);
+  }, []);
+
+  // Keeps one continuous recording running across mode switches: records the
+  // camera feed in video mode, and seamlessly swaps to a mic-only track when
+  // the user flips to voice-only, so a session's download isn't lost/split
+  // just because the camera got turned off partway through.
+  useEffect(() => {
+    if (!sessionActive) {
+      if (mediaRecorderRef.current?.state === "recording") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
+      mediaRecorderRef.current = null;
+      micOnlyStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micOnlyStreamRef.current = null;
+      recordingStartedRef.current = false;
+      return;
+    }
+
+    const desiredSource = mode === "video" ? "video" : "audio";
+    const current = mediaRecorderRef.current;
+
+    if (
+      current &&
+      current.__source === desiredSource &&
+      current.state === "recording"
+    ) {
+      return; // already recording from the right source
+    }
+
+    if (mode === "video" && (!cameraActive || !cameraStreamRef.current)) {
+      return; // wait for the camera stream to come back online
+    }
+
+    if (current?.state === "recording") {
+      try {
+        current.stop();
+      } catch {}
+    }
+
+    if (!recordingStartedRef.current) {
+      recordedChunksRef.current = [];
+      recordingStartedRef.current = true;
+    }
+
+    if (mode === "video") {
+      micOnlyStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micOnlyStreamRef.current = null;
+      startRecorderFor(cameraStreamRef.current, "video");
+    } else {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((micStream) => {
+          micOnlyStreamRef.current = micStream;
+          startRecorderFor(micStream, "audio");
+        })
+        .catch((err) =>
+          console.warn("[ScanPage] mic-only recording unavailable:", err?.name),
+        );
+    }
+  }, [sessionActive, mode, cameraActive, startRecorderFor]);
 
   useEffect(() => {
-    if (!sessionActive || !videoRef.current) return;
+    if (!sessionActive || mode !== "video" || !videoRef.current) return;
     const canvas = document.createElement("canvas");
     const iv = setInterval(() => {
       const video = videoRef.current;
@@ -181,7 +256,7 @@ export default function ScanPage() {
       sendVideoFrame(canvas.toDataURL("image/jpeg", 0.65).split(",")[1]);
     }, 2500);
     return () => clearInterval(iv);
-  }, [sessionActive, sendVideoFrame]);
+  }, [sessionActive, mode, sendVideoFrame]);
 
   const handleGalleryPick = (e) => {
     const file = e.target.files[0];
@@ -259,13 +334,10 @@ export default function ScanPage() {
           )}
 
           <div className="sp-cam-root">
-            {/* video stays mounted at all times so videoRef.current is never
-                null when getUserMedia resolves and attachStream() runs.
-                Previously this was conditionally rendered on cameraActive,
-                which created a race: setCameraActive(true) schedules a
-                re-render, but attachStream(s) ran on the same tick against
-                the still-null ref, so the stream was silently dropped and
-                the video permanently stayed on a black frame. */}
+            {/* video stays mounted at all times, in both modes, so
+                videoRef.current is never null when getUserMedia resolves —
+                see attachStream(). In voice mode it's simply covered by the
+                sp-voice-mode overlay below, and its srcObject is cleared. */}
             <video
               ref={videoRef}
               autoPlay
@@ -273,7 +345,66 @@ export default function ScanPage() {
               muted
               className="sp-video"
             />
-            {!cameraActive && (
+
+            <div
+              className="sp-mode-switch"
+              role="tablist"
+              aria-label="Mode percakapan"
+            >
+              <span
+                className={`sp-mode-thumb ${mode === "voice" ? "sp-mode-thumb--right" : ""}`}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "video"}
+                className={`sp-mode-opt ${mode === "video" ? "sp-mode-opt--active" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMode("video");
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polygon points="23 7 16 12 23 17 23 7" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+                Video
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "voice"}
+                className={`sp-mode-opt ${mode === "voice" ? "sp-mode-opt--active" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMode("voice");
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                </svg>
+                Suara
+              </button>
+            </div>
+
+            {mode === "video" && !cameraActive && (
               <div className="sp-no-cam">
                 <svg
                   width="44"
@@ -290,7 +421,55 @@ export default function ScanPage() {
               </div>
             )}
 
-            <ScanFrame active={sessionActive} />
+            {mode === "voice" && (
+              <div className="sp-voice-mode">
+                <div className="sp-mic-wrap">
+                  {isLive && !isAISpeaking && !isConnecting && (
+                    <>
+                      <span className="sp-wave sp-wave-1" />
+                      <span className="sp-wave sp-wave-2" />
+                      <span className="sp-wave sp-wave-3" />
+                    </>
+                  )}
+                  <div
+                    className={`sp-mic-btn ${
+                      isConnecting
+                        ? "sp-mic-btn--loading"
+                        : isAISpeaking
+                          ? "sp-mic-btn--speaking"
+                          : isLive
+                            ? "sp-mic-btn--active"
+                            : ""
+                    }`}
+                  >
+                    <svg
+                      width="30"
+                      height="30"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="sp-voice-hint">
+                  {isConnecting
+                    ? "Menghubungkan..."
+                    : isAISpeaking
+                      ? "UPTERRA AI sedang bicara..."
+                      : isLive
+                        ? "Mendengarkan..."
+                        : "Memulai..."}
+                </p>
+              </div>
+            )}
+
+            {mode === "video" && <ScanFrame active={sessionActive} />}
 
             {audioUnlocked && (
               <div className="sp-status-badge">
