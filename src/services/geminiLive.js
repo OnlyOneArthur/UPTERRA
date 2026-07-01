@@ -6,10 +6,12 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model Live API untuk Google AI (generativelanguage.googleapis.com) v1beta.
-// - gemini-live-2.5-flash-native-audio  → format Vertex AI, TIDAK work di v1beta
-// - gemini-2.5-flash-preview-native-audio → format Google AI, work di v1beta
-const MODEL_ID = "gemini-2.5-flash-preview-native-audio";
+// Model yang confirmed working di Google AI v1beta endpoint.
+// Ref: https://ai.google.dev/gemini-api/docs/live-api/capabilities
+//
+// PENTING: Native audio models HANYA support responseModalities: ["AUDIO"].
+// Text response diambil dari outputAudioTranscription, bukan dari TEXT modality.
+const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -63,22 +65,23 @@ export function createGeminiLiveClient({
 
     ws.onopen = () => {
       // Initial setup message (BidiGenerateContentSetup)
+      // PENTING: Native audio models HANYA support responseModalities: ["AUDIO"].
+      // Untuk mendapatkan teks, aktifkan outputAudioTranscription.
       const setupMessage = {
         setup: {
           model: `models/${MODEL_ID}`,
           generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 512,
-            // gemini-2.5-flash-preview-native-audio adalah native audio model.
-            // Default output-nya AUDIO. Kalau mau TEXT juga, tambahkan "TEXT".
-            responseModalities: enableAudioOutput ? ["AUDIO"] : ["AUDIO", "TEXT"],
+            // HARUS ["AUDIO"] saja untuk native audio model.
+            // Text response didapat dari transcript, bukan TEXT modality.
+            responseModalities: ["AUDIO"],
           },
           systemInstruction: systemInstruction
             ? {
                 parts: [{ text: systemInstruction }],
               }
             : undefined,
-          // Enable transcription for input & output audio
+          // Aktifkan transcription untuk input & output audio
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           realtimeInputConfig: {
@@ -110,13 +113,15 @@ export function createGeminiLiveClient({
       const server = msg.serverContent;
       if (!server) return;
 
-      // Model content (text + optional inline audio)
+      // Model content: audio inline data
       const turn = server.modelTurn;
       if (turn?.parts) {
         for (const part of turn.parts) {
+          // Text part (kalau ada)
           if (typeof part.text === "string" && part.text.trim()) {
             onText?.(part.text);
           }
+          // Audio part (native audio output)
           if (
             part.inlineData &&
             typeof part.inlineData.data === "string" &&
@@ -128,17 +133,22 @@ export function createGeminiLiveClient({
         }
       }
 
-      // Transcripts (user & AI) dari Live API
+      // Output transcript (teks dari audio output AI)
+      // Ini adalah cara utama mendapatkan teks dari native audio model
+      if (server.outputTranscription?.text) {
+        const text = server.outputTranscription.text;
+        onText?.(text); // teruskan ke UI sebagai teks AI
+        onTranscript?.({
+          role: "ai",
+          text,
+        });
+      }
+
+      // Input transcript (teks dari audio input user)
       if (server.inputTranscription?.text) {
         onTranscript?.({
           role: "user",
           text: server.inputTranscription.text,
-        });
-      }
-      if (server.outputTranscription?.text) {
-        onTranscript?.({
-          role: "ai",
-          text: server.outputTranscription.text,
         });
       }
     };
@@ -151,9 +161,6 @@ export function createGeminiLiveClient({
     };
 
     // Log detail close code dan reason agar lebih mudah debug.
-    // Code 1006 = connection dropped abnormally (server tutup tanpa alasan jelas).
-    // Code 1000 = normal close.
-    // Reason string dari server biasanya berisi pesan error JSON.
     ws.onclose = (event) => {
       console.info(
         "[GeminiLive] WebSocket closed",
@@ -162,7 +169,6 @@ export function createGeminiLiveClient({
         "reason=", event.reason || "(no reason)",
       );
 
-      // Kalau server kirim reason berisi JSON error, parse dan teruskan ke UI
       if (!event.wasClean && event.reason) {
         try {
           const errBody = JSON.parse(event.reason);
