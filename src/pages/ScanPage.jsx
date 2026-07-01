@@ -69,14 +69,22 @@ export default function ScanPage() {
   const attachStream = useCallback((stream) => {
     const video = videoRef.current;
     if (!video) return;
+
     video.srcObject = stream;
+    video.muted = true;
+    video.playsInline = true;
+
     const tryPlay = () => {
       video.play().catch(() => {});
     };
-    if (video.readyState >= 1) {
+
+    // Use addEventListener to avoid overwriting and ensure it fires
+    video.addEventListener('loadedmetadata', tryPlay, { once: true });
+    video.addEventListener('canplay', tryPlay, { once: true });
+
+    // Immediate attempt if already ready
+    if (video.readyState >= 2) {
       tryPlay();
-    } else {
-      video.onloadedmetadata = tryPlay;
     }
   }, []);
 
