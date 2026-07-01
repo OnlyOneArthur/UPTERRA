@@ -6,10 +6,9 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// FIX 1: Model ID yang valid dan tersedia.
-// 'gemini-3.1-flash-live-preview' belum tentu exist → server langsung tutup
-// koneksi (WebSocket closed tanpa setupComplete). Ganti ke:
-const MODEL_ID = "gemini-2.0-flash-live-001";
+// Model Live API yang aktif dan GA per Juli 2026.
+// gemini-2.0-flash-live-001 sudah discontinued sejak 1 Juni 2026.
+const MODEL_ID = "gemini-live-2.5-flash-native-audio";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -148,7 +147,7 @@ export function createGeminiLiveClient({
       );
     };
 
-    // FIX 2: Log detail close code dan reason agar lebih mudah debug.
+    // Log detail close code dan reason agar lebih mudah debug.
     // Code 1006 = connection dropped abnormally (server tutup tanpa alasan jelas).
     // Code 1000 = normal close.
     // Reason string dari server biasanya berisi pesan error JSON.
