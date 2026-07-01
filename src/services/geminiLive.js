@@ -6,9 +6,9 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model Live (lihat .env.example)
+// Model Live (lihat docs Gemini 3.1 Flash Live Preview)
 // Format di setup: "models/{model_id}"
-const MODEL_ID = "gemini-2.0-flash-live-001";
+const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
