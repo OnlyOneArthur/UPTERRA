@@ -114,25 +114,21 @@ export default function LaporanSaya() {
                 {
                   label: "Terkirim",
                   count: summary.Dikirim,
-                  emoji: "📤",
                   color: "#1d64d8",
                 },
                 {
                   label: "Diproses",
                   count: summary.Diproses,
-                  emoji: "⚙️",
                   color: "#a16207",
                 },
                 {
                   label: "Selesai",
                   count: summary.Selesai,
-                  emoji: "✅",
                   color: "#15803d",
                 },
                 {
                   label: "Dibatalkan",
                   count: summary.Dibatalkan,
-                  emoji: "❌",
                   color: "#dc2626",
                 },
               ].map((item) => (
