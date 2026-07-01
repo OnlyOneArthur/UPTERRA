@@ -6,9 +6,10 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model Live (lihat docs Gemini 3.1 Flash Live Preview)
-// Format di setup: "models/{model_id}"
-const MODEL_ID = "gemini-3.1-flash-live-preview";
+// FIX 1: Model ID yang valid dan tersedia.
+// 'gemini-3.1-flash-live-preview' belum tentu exist → server langsung tutup
+// koneksi (WebSocket closed tanpa setupComplete). Ganti ke:
+const MODEL_ID = "gemini-2.0-flash-live-001";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -23,7 +24,7 @@ function safeSend(ws, payload) {
  * createGeminiLiveClient
  *
  * @param {Object} options
- * @param {string} options.apiKey        - Gemini API key dari VITE_GEMINI_API_KEY
+ * @param {string} options.apiKey            - Gemini API key dari VITE_GEMINI_API_KEY
  * @param {string} options.systemInstruction - System prompt untuk sesi
  * @param {boolean} options.enableAudioOutput - true kalau mau native audio Gemini
  * @param {(text: string) => void} options.onText
@@ -120,7 +121,6 @@ export function createGeminiLiveClient({
             part.inlineData.mimeType?.startsWith("audio/")
           ) {
             onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
-            // Approximate audio level as "speaking"
             onAudioLevel?.(1);
           }
         }
@@ -148,8 +148,29 @@ export function createGeminiLiveClient({
       );
     };
 
-    ws.onclose = () => {
-      console.info("[GeminiLive] WebSocket closed");
+    // FIX 2: Log detail close code dan reason agar lebih mudah debug.
+    // Code 1006 = connection dropped abnormally (server tutup tanpa alasan jelas).
+    // Code 1000 = normal close.
+    // Reason string dari server biasanya berisi pesan error JSON.
+    ws.onclose = (event) => {
+      console.info(
+        "[GeminiLive] WebSocket closed",
+        "code=", event.code,
+        "wasClean=", event.wasClean,
+        "reason=", event.reason || "(no reason)",
+      );
+
+      // Kalau server kirim reason berisi JSON error, parse dan teruskan ke UI
+      if (!event.wasClean && event.reason) {
+        try {
+          const errBody = JSON.parse(event.reason);
+          const msg = errBody?.error?.message || errBody?.message || event.reason;
+          onError?.(`Gemini Live ditutup server: ${msg}`);
+        } catch {
+          onError?.(`Gemini Live ditutup server (code ${event.code}): ${event.reason}`);
+        }
+      }
+
       open = false;
       ws = null;
       onClose?.();
@@ -194,7 +215,7 @@ export function createGeminiLiveClient({
     });
   };
 
-  // Send text streaming
+  // Send text message
   const sendText = (text) => {
     const trimmed = text?.trim();
     if (!trimmed) return;

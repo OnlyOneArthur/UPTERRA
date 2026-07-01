@@ -5,6 +5,21 @@ import BottomNav from '../components/layout/BottomNav';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import '../styles/scan.css';
 
+// FIX 3: Pilih mimeType MediaRecorder yang didukung browser.
+// VP9+Opus (sebelumnya) tidak didukung Firefox → coba VP8+Opus dulu,
+// lalu generic webm, lalu video-only webm.
+function getSupportedMimeType() {
+  const candidates = [
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return ''; // biarkan browser pilih sendiri
+}
+
 export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -60,6 +75,35 @@ export default function ScanPage() {
   useEffect(() => {
     let localStream = null;
 
+    const initMediaRecorder = (stream) => {
+      const mimeType = getSupportedMimeType();
+      try {
+        const options = mimeType ? { mimeType } : {};
+        const recorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = recorder;
+        recordedChunksRef.current = [];
+
+        recorder.ondataavailable = (evt) => {
+          if (evt.data && evt.data.size > 0) {
+            recordedChunksRef.current.push(evt.data);
+          }
+        };
+
+        recorder.onstop = () => {
+          if (!recordedChunksRef.current.length) return;
+          const blob = new Blob(recordedChunksRef.current, {
+            type: mimeType || 'video/webm',
+          });
+          setSessionRecordingUrl(URL.createObjectURL(blob));
+        };
+
+        console.info('[ScanPage] MediaRecorder ready, mimeType:', recorder.mimeType);
+      } catch (err) {
+        console.warn('[ScanPage] MediaRecorder init failed — recording disabled', err);
+        mediaRecorderRef.current = null;
+      }
+    };
+
     navigator.mediaDevices
       .getUserMedia({
         video: { facingMode: { ideal: 'environment' } },
@@ -69,38 +113,17 @@ export default function ScanPage() {
         localStream = s;
         setCameraActive(true);
         if (videoRef.current) videoRef.current.srcObject = s;
-
-        try {
-          const recorder = new MediaRecorder(s, {
-            mimeType: 'video/webm;codecs=vp9,opus',
-          });
-          mediaRecorderRef.current = recorder;
-          recordedChunksRef.current = [];
-
-          recorder.ondataavailable = (evt) => {
-            if (evt.data && evt.data.size > 0) {
-              recordedChunksRef.current.push(evt.data);
-            }
-          };
-
-          recorder.onstop = () => {
-            if (!recordedChunksRef.current.length) return;
-            const blob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
-            });
-            setSessionRecordingUrl(URL.createObjectURL(blob));
-          };
-        } catch (err) {
-          console.warn('[ScanPage] MediaRecorder init failed', err);
-        }
+        initMediaRecorder(s);
       })
       .catch(() => {
+        // Fallback: video tanpa audio (untuk browser / device yang strict)
         navigator.mediaDevices
           .getUserMedia({ video: true, audio: false })
           .then((s) => {
             localStream = s;
             setCameraActive(true);
             if (videoRef.current) videoRef.current.srcObject = s;
+            initMediaRecorder(s);
           })
           .catch(() => setCameraActive(false));
       });
