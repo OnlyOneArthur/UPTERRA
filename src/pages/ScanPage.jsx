@@ -74,18 +74,13 @@ export default function ScanPage() {
     video.muted = true;
     video.playsInline = true;
 
-    const tryPlay = () => {
-      video.play().catch(() => {});
-    };
-
-    // Use addEventListener to avoid overwriting and ensure it fires
-    video.addEventListener('loadedmetadata', tryPlay, { once: true });
-    video.addEventListener('canplay', tryPlay, { once: true });
-
-    // Immediate attempt if already ready
-    if (video.readyState >= 2) {
-      tryPlay();
-    }
+    // Direct play attempt (in user gesture context)
+    video.play().catch(() => {
+      // one retry shortly after if blocked
+      setTimeout(() => {
+        video.play().catch(() => {});
+      }, 80);
+    });
   }, []);
 
   useEffect(() => {
