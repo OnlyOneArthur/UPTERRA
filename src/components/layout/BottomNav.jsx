@@ -31,34 +31,17 @@ export default function BottomNav() {
     <nav
       className="fixed bottom-0 left-1/2 z-[2000] w-full max-w-md -translate-x-1/2"
       style={{
-        background: "rgba(255,255,255,0.20)",
-        backdropFilter: "blur(28px) saturate(200%) brightness(1.08)",
-        WebkitBackdropFilter: "blur(28px) saturate(200%) brightness(1.08)",
-        borderTop: "1px solid rgba(255,255,255,0.60)",
-        borderLeft: "1px solid rgba(255,255,255,0.30)",
-        borderRight: "1px solid rgba(255,255,255,0.30)",
+        background: "rgba(255,255,255,1)",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
+        borderTop: "1px solid rgba(0,0,0,0.07)",
+        borderLeft: "1px solid rgba(0,0,0,0.04)",
+        borderRight: "1px solid rgba(0,0,0,0.04)",
         borderRadius: "28px 28px 0 0",
-        boxShadow:
-          "0 -4px 32px rgba(0,0,0,0.09)," +
-          "inset 0 1.5px 0 rgba(255,255,255,0.80)",
+        boxShadow: "0 -4px 32px rgba(0,0,0,0.09)",
         padding: "10px 20px 20px",
       }}
     >
-      {/* top shine line */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "10%",
-          width: "80%",
-          height: 1,
-          background:
-            "linear-gradient(90deg, transparent, rgba(255,255,255,1) 40%, rgba(255,255,255,1) 60%, transparent)",
-          pointerEvents: "none",
-        }}
-      />
-
       <div className="flex items-end justify-between relative">
         {navItems.map(({ to, label, icon: Icon, center }) => {
           /* CENTER FAB */
@@ -101,7 +84,6 @@ export default function BottomNav() {
           }
 
           /* REGULAR ITEMS */
-          const pillIdx = pillItems.findIndex((p) => p.to === to);
           const isActive = location.pathname.startsWith(to);
 
           return (
@@ -111,7 +93,7 @@ export default function BottomNav() {
               className="flex flex-col items-center gap-1 relative z-10"
               style={{ minWidth: 52, paddingTop: 6 }}
             >
-              {/* THE PILL — rendered inside the active item, Framer moves it */}
+              {/* ACTIVE PILL — no blur */}
               {isActive && (
                 <motion.span
                   layoutId="nav-pill"
@@ -122,34 +104,14 @@ export default function BottomNav() {
                     inset: "-6px -12px",
                     borderRadius: 18,
                     background:
-                      "linear-gradient(160deg, rgba(47,168,87,0.20) 0%, rgba(40,160,85,0.08) 100%)",
-                    border: "1px solid rgba(47,168,87,0.28)",
-                    backdropFilter: "blur(16px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(16px) saturate(180%)",
-                    boxShadow:
-                      "0 4px 20px rgba(47,168,87,0.16)," +
-                      "inset 0 1.5px 0 rgba(255,255,255,0.75)," +
-                      "inset 0 -1px 0 rgba(47,168,87,0.08)",
+                      "linear-gradient(160deg, rgba(47,168,87,0.15) 0%, rgba(40,160,85,0.06) 100%)",
+                    border: "1px solid rgba(47,168,87,0.22)",
+                    backdropFilter: "none",
+                    WebkitBackdropFilter: "none",
+                    boxShadow: "0 4px 20px rgba(47,168,87,0.12)",
                     zIndex: 0,
-                    overflow: "hidden",
                   }}
-                >
-                  {/* inner highlight shine */}
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: "12%",
-                      width: "76%",
-                      height: "44%",
-                      borderRadius: "0 0 50% 50%",
-                      background:
-                        "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, transparent 100%)",
-                      opacity: 0.45,
-                    }}
-                  />
-                </motion.span>
+                />
               )}
 
               <Icon
