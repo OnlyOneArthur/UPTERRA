@@ -27,9 +27,7 @@ function parseDetection(rawText) {
       const json = JSON.parse(match[0]);
       return { detectionResult: json, cleanText: rawText.replace(match[0], "").trim() };
     }
-  } catch {
-    // malformed JSON — treat as plain text
-  }
+  } catch {}
   return { detectionResult: null, cleanText: rawText };
 }
 
@@ -70,16 +68,10 @@ function speakText(text, onStart, onEnd) {
   }
 }
 
-/**
- * arrayBufferToBase64
- * Convert ArrayBuffer (PCM16 bytes) → base64 string untuk dikirim ke Gemini.
- */
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
   return window.btoa(binary);
 }
 
@@ -100,11 +92,12 @@ export function useGeminiLive() {
   const frameTimerRef = useRef(null);
   const isBusyRef = useRef(false);
   const lastHashRef = useRef("");
-  const accumulatedTextRef = useRef("");
+  // accumulatedAiTextRef: buffer transcript AI chunks sebelum di-flush ke TTS
+  const accumulatedAiTextRef = useRef("");
   const flushTimerRef = useRef(null);
   const frameLoopActiveRef = useRef(false);
 
-  // ── Mic audio streaming refs ──────────────────────────────────────────────
+  // Mic refs
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
   const micSourceRef = useRef(null);
@@ -118,40 +111,66 @@ export function useGeminiLive() {
     }
   }, []);
 
-  // ── Handle text chunks ────────────────────────────────────────────────────
+  // ── flushAiText: parse + TTS + update UI ──────────────────────────────────
+  // Shared logic untuk kedua path: teks langsung (TEXT mode)
+  // maupun transcript teks dari audio (AUDIO mode).
+  const flushAiText = useCallback((raw) => {
+    const text = raw.trim();
+    if (!text) return;
+
+    const { detectionResult: det, cleanText } = parseDetection(text);
+    if (det) setDetectionResult(det);
+
+    const display = cleanText || text;
+    setCaption(display);
+    setMessages((prev) => [...prev, { role: "ai", text: display, ts: Date.now() }]);
+    setTranscript((prev) => [...prev, { role: "ai", text: display, ts: Date.now() }]);
+
+    isBusyRef.current = false;
+
+    setIsAISpeaking(true);
+    speakText(
+      display,
+      () => setIsAISpeaking(true),
+      () => { setIsAISpeaking(false); setTimeout(() => setCaption(""), 3000); },
+    );
+  }, []);
+
+  // ── onText: dipanggil oleh part.text dari modelTurn (TEXT mode) ─────────
   const handleTextChunk = useCallback((chunk) => {
-    accumulatedTextRef.current += chunk;
+    accumulatedAiTextRef.current += chunk;
     clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(() => {
-      isBusyRef.current = false;
-      const raw = accumulatedTextRef.current.trim();
-      accumulatedTextRef.current = "";
-      if (!raw) return;
-
-      const { detectionResult: det, cleanText } = parseDetection(raw);
-      if (det) setDetectionResult(det);
-      setCaption(cleanText);
-      setMessages((prev) => [...prev, { role: "ai", text: cleanText, ts: Date.now() }]);
-
-      setIsAISpeaking(true);
-      speakText(
-        cleanText,
-        () => setIsAISpeaking(true),
-        () => { setIsAISpeaking(false); setTimeout(() => setCaption(""), 3000); },
-      );
+      const raw = accumulatedAiTextRef.current;
+      accumulatedAiTextRef.current = "";
+      flushAiText(raw);
     }, 300);
-  }, []);
+  }, [flushAiText]);
 
-  // ── Handle transcript ─────────────────────────────────────────────────────
+  // ── onTranscript: dipanggil oleh inputTranscription / outputTranscription ──
+  // AUDIO mode: outputTranscription.text adalah satu-satunya teks dari AI.
+  // Kita accumulate juga agar potongan kecil tidak di-speak satu-satu.
   const handleTranscript = useCallback((entry) => {
     if (!entry || !entry.text?.trim()) return;
-    const ts = Date.now();
-    const role = entry.role === "user" ? "user" : "ai";
-    setTranscript((prev) => [...prev, { role, text: entry.text, ts }]);
-    setMessages((prev) => [...prev, { role, text: entry.text, ts }]);
-  }, []);
 
-  // ── Stop mic stream ───────────────────────────────────────────────────────
+    if (entry.role === "user") {
+      // User transcript: langsung simpan, tidak perlu TTS
+      setTranscript((prev) => [...prev, { role: "user", text: entry.text, ts: Date.now() }]);
+      setMessages((prev) => [...prev, { role: "user", text: entry.text, ts: Date.now() }]);
+      return;
+    }
+
+    // AI transcript (outputTranscription) → accumulate → flush → TTS
+    accumulatedAiTextRef.current += entry.text;
+    clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(() => {
+      const raw = accumulatedAiTextRef.current;
+      accumulatedAiTextRef.current = "";
+      flushAiText(raw);
+    }, 300);
+  }, [flushAiText]);
+
+  // ── Stop mic ─────────────────────────────────────────────────────────────
   const stopMicStream = useCallback(() => {
     try { workletNodeRef.current?.disconnect(); } catch {}
     try { micSourceRef.current?.disconnect(); } catch {}
@@ -164,30 +183,19 @@ export function useGeminiLive() {
     console.info("[GeminiLive] Mic stream stopped");
   }, []);
 
-  // ── Start mic stream (AudioWorklet → PCM16 → sendAudio) ──────────────────
+  // ── Start mic (AudioWorklet → PCM16 → sendAudio) ──────────────────────
   const startMicStream = useCallback(async () => {
     if (!clientRef.current?.isOpen()) return;
-
     try {
-      // Request mic. ScanPage sudah punya stream, tapi AudioWorklet butuh
-      // AudioContext sendiri dengan sample rate 16kHz agar match Gemini.
       const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
       });
       micStreamRef.current = micStream;
 
-      // AudioContext pada 16kHz agar tidak perlu resample manual
       const audioCtx = new AudioContext({ sampleRate: 16000 });
       audioCtxRef.current = audioCtx;
 
-      // Load AudioWorklet processor dari /public/pcm-processor.js
       await audioCtx.audioWorklet.addModule("/pcm-processor.js");
 
       const source = audioCtx.createMediaStreamSource(micStream);
@@ -196,20 +204,15 @@ export function useGeminiLive() {
       const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor");
       workletNodeRef.current = workletNode;
 
-      // Setiap chunk PCM dari worklet → base64 → kirim ke Gemini
       workletNode.port.onmessage = (evt) => {
         if (!clientRef.current?.isOpen()) return;
-        const base64 = arrayBufferToBase64(evt.data);
-        clientRef.current.sendAudio(base64);
+        clientRef.current.sendAudio(arrayBufferToBase64(evt.data));
       };
 
       source.connect(workletNode);
-      // Worklet tidak perlu connect ke destination (kita tidak butuh output speaker)
-
-      console.info("[GeminiLive] Mic stream started, streaming PCM to Gemini ✅");
+      console.info("[GeminiLive] Mic stream started ✅");
     } catch (err) {
       console.warn("[GeminiLive] startMicStream failed:", err);
-      // Non-fatal: session tetap jalan, hanya voice input yang tidak aktif
     }
   }, []);
 
@@ -217,15 +220,12 @@ export function useGeminiLive() {
   const startFrameLoop = useCallback(() => {
     if (frameLoopActiveRef.current) return;
     frameLoopActiveRef.current = true;
-
     clearInterval(frameTimerRef.current);
     frameTimerRef.current = setInterval(() => {
       const frame = pendingFrameRef.current;
       if (!frame || isBusyRef.current || !clientRef.current?.isOpen()) return;
-
       const hash = frame.slice(-80);
       if (hash === lastHashRef.current) return;
-
       lastHashRef.current = hash;
       pendingFrameRef.current = null;
       isBusyRef.current = true;
@@ -235,14 +235,11 @@ export function useGeminiLive() {
 
   // ── Start session ─────────────────────────────────────────────────────────
   const startSession = useCallback(() => {
-    if (clientRef.current) {
-      clientRef.current.disconnect();
-      clientRef.current = null;
-    }
+    if (clientRef.current) { clientRef.current.disconnect(); clientRef.current = null; }
     stopMicStream();
 
     if (!GEMINI_API_KEY) {
-      setError("VITE_GEMINI_API_KEY tidak ditemukan. Tambahkan ke file .env kamu.");
+      setError("VITE_GEMINI_API_KEY tidak ditemukan.");
       setStatus("error");
       return;
     }
@@ -253,7 +250,7 @@ export function useGeminiLive() {
     setDetectionResult(null);
     setCaption("");
     setTranscript([]);
-    accumulatedTextRef.current = "";
+    accumulatedAiTextRef.current = "";
     lastHashRef.current = "";
     isBusyRef.current = false;
     frameLoopActiveRef.current = false;
@@ -261,12 +258,11 @@ export function useGeminiLive() {
     const client = createGeminiLiveClient({
       apiKey: GEMINI_API_KEY,
       systemInstruction: SYSTEM_PROMPT,
-      onText: handleTextChunk,
-      onTranscript: handleTranscript,
+      onText: handleTextChunk,       // TEXT mode fallback
+      onTranscript: handleTranscript, // AUDIO mode (primary)
       onReady: () => {
         setStatus("live");
         startFrameLoop();
-        // Start streaming mic audio ke Gemini setelah session ready
         startMicStream();
       },
       onClose: () => {
@@ -302,7 +298,7 @@ export function useGeminiLive() {
     clientRef.current = null;
     isBusyRef.current = false;
     pendingFrameRef.current = null;
-    accumulatedTextRef.current = "";
+    accumulatedAiTextRef.current = "";
     stopMicStream();
     setStatus("idle");
     setIsAISpeaking(false);
@@ -310,14 +306,8 @@ export function useGeminiLive() {
     setAudioLevel(0);
   }, [stopMicStream]);
 
-  const sendVideoFrame = useCallback((base64Jpeg) => {
-    pendingFrameRef.current = base64Jpeg;
-  }, []);
-
-  const sendAudioChunk = useCallback((base64Pcm) => {
-    clientRef.current?.sendAudio(base64Pcm);
-  }, []);
-
+  const sendVideoFrame = useCallback((base64Jpeg) => { pendingFrameRef.current = base64Jpeg; }, []);
+  const sendAudioChunk = useCallback((base64Pcm) => { clientRef.current?.sendAudio(base64Pcm); }, []);
   const sendTextMessage = useCallback((text) => {
     if (!text.trim() || !clientRef.current?.isOpen()) return;
     setMessages((prev) => [...prev, { role: "user", text, ts: Date.now() }]);
@@ -326,9 +316,7 @@ export function useGeminiLive() {
 
   const downloadTranscript = useCallback(() => {
     if (!transcript.length) return;
-    const lines = transcript
-      .map((m) => `${m.role === "user" ? "Kamu" : "UPTERRA AI"}: ${m.text}`)
-      .join("\n");
+    const lines = transcript.map((m) => `${m.role === "user" ? "Kamu" : "UPTERRA AI"}: ${m.text}`).join("\n");
     const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
