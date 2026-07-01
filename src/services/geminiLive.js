@@ -1,16 +1,14 @@
 // ─── Gemini Live WebSocket Client ────────────────────────────────────────────
 // Real-time streaming (video/audio/text) + transcript support.
 // Dipakai oleh: src/hooks/useGeminiLive.js
+// Ref: https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
 // ─────────────────────────────────────────────────────────────────────────────
 
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model yang confirmed working di Google AI v1beta endpoint.
-// Ref: https://ai.google.dev/gemini-api/docs/live-api/capabilities
-//
-// PENTING: Native audio models HANYA support responseModalities: ["AUDIO"].
-// Text response diambil dari outputAudioTranscription, bukan dari TEXT modality.
+// Model ID per dokumentasi resmi Live API WebSockets (Juli 2026)
+// Ref: https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
 const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
@@ -28,7 +26,6 @@ function safeSend(ws, payload) {
  * @param {Object} options
  * @param {string} options.apiKey            - Gemini API key dari VITE_GEMINI_API_KEY
  * @param {string} options.systemInstruction - System prompt untuk sesi
- * @param {boolean} options.enableAudioOutput - true kalau mau native audio Gemini
  * @param {(text: string) => void} options.onText
  * @param {(entry: { role: "user"|"ai", text: string }) => void} options.onTranscript
  * @param {(data: string, mimeType: string) => void} options.onAudioChunk
@@ -40,7 +37,6 @@ function safeSend(ws, payload) {
 export function createGeminiLiveClient({
   apiKey,
   systemInstruction = "",
-  enableAudioOutput = false,
   onText,
   onTranscript,
   onAudioChunk,
@@ -64,22 +60,17 @@ export function createGeminiLiveClient({
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-      // Initial setup message (BidiGenerateContentSetup)
-      // PENTING: Native audio models HANYA support responseModalities: ["AUDIO"].
-      // Untuk mendapatkan teks, aktifkan outputAudioTranscription.
+      // Setup message persis seperti dokumentasi resmi:
+      // https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
+      //
+      // PENTING: responseModalities ada di level 'setup', BUKAN di dalam
+      // 'generationConfig'. Salah tempat = server tolak setup dan tutup koneksi.
       const setupMessage = {
         setup: {
           model: `models/${MODEL_ID}`,
-          generationConfig: {
-            temperature: 0.4,
-            // HARUS ["AUDIO"] saja untuk native audio model.
-            // Text response didapat dari transcript, bukan TEXT modality.
-            responseModalities: ["AUDIO"],
-          },
+          responseModalities: ["AUDIO"],
           systemInstruction: systemInstruction
-            ? {
-                parts: [{ text: systemInstruction }],
-              }
+            ? { parts: [{ text: systemInstruction }] }
             : undefined,
           // Aktifkan transcription untuk input & output audio
           inputAudioTranscription: {},
@@ -90,6 +81,7 @@ export function createGeminiLiveClient({
         },
       };
 
+      console.info("[GeminiLive] Sending setup...", setupMessage);
       safeSend(ws, setupMessage);
     };
 
@@ -102,10 +94,10 @@ export function createGeminiLiveClient({
         return;
       }
 
-      // Setup complete → connection ready
+      // Setup complete → session siap
       if (msg.setupComplete) {
         open = true;
-        console.info("[GeminiLive] Setup complete, session live");
+        console.info("[GeminiLive] Setup complete, session live ✅");
         onReady?.();
         return;
       }
@@ -113,15 +105,9 @@ export function createGeminiLiveClient({
       const server = msg.serverContent;
       if (!server) return;
 
-      // Model content: audio inline data
-      const turn = server.modelTurn;
-      if (turn?.parts) {
-        for (const part of turn.parts) {
-          // Text part (kalau ada)
-          if (typeof part.text === "string" && part.text.trim()) {
-            onText?.(part.text);
-          }
-          // Audio part (native audio output)
+      // Audio chunks dari model
+      if (server.modelTurn?.parts) {
+        for (const part of server.modelTurn.parts) {
           if (
             part.inlineData &&
             typeof part.inlineData.data === "string" &&
@@ -130,21 +116,21 @@ export function createGeminiLiveClient({
             onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
             onAudioLevel?.(1);
           }
+          // Fallback: kalau model kirim text part
+          if (typeof part.text === "string" && part.text.trim()) {
+            onText?.(part.text);
+          }
         }
       }
 
-      // Output transcript (teks dari audio output AI)
-      // Ini adalah cara utama mendapatkan teks dari native audio model
+      // Output transcript = teks dari audio AI (cara utama dapat teks di native audio model)
       if (server.outputTranscription?.text) {
         const text = server.outputTranscription.text;
-        onText?.(text); // teruskan ke UI sebagai teks AI
-        onTranscript?.({
-          role: "ai",
-          text,
-        });
+        onText?.(text);
+        onTranscript?.({ role: "ai", text });
       }
 
-      // Input transcript (teks dari audio input user)
+      // Input transcript = teks dari audio user
       if (server.inputTranscription?.text) {
         onTranscript?.({
           role: "user",
@@ -155,12 +141,9 @@ export function createGeminiLiveClient({
 
     ws.onerror = (event) => {
       console.error("[GeminiLive] WebSocket error", event);
-      onError?.(
-        "Gemini Live WebSocket error. Cek API key, quota, dan koneksi jaringan.",
-      );
+      onError?.("Gemini Live WebSocket error. Cek API key, quota, dan koneksi.");
     };
 
-    // Log detail close code dan reason agar lebih mudah debug.
     ws.onclose = (event) => {
       console.info(
         "[GeminiLive] WebSocket closed",
@@ -202,23 +185,17 @@ export function createGeminiLiveClient({
     if (!base64Jpeg) return;
     safeSend(ws, {
       realtimeInput: {
-        video: {
-          data: base64Jpeg,
-          mimeType: "image/jpeg",
-        },
+        video: { data: base64Jpeg, mimeType: "image/jpeg" },
       },
     });
   };
 
-  // Send audio chunk (PCM 16kHz, base64)
+  // Send audio chunk (raw PCM 16-bit, 16kHz, little-endian, base64)
   const sendAudio = (base64Pcm) => {
     if (!base64Pcm) return;
     safeSend(ws, {
       realtimeInput: {
-        audio: {
-          data: base64Pcm,
-          mimeType: "audio/pcm;rate=16000",
-        },
+        audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" },
       },
     });
   };
@@ -228,20 +205,11 @@ export function createGeminiLiveClient({
     const trimmed = text?.trim();
     if (!trimmed) return;
     safeSend(ws, {
-      realtimeInput: {
-        text: trimmed,
-      },
+      realtimeInput: { text: trimmed },
     });
   };
 
   const isOpen = () => !!ws && ws.readyState === WebSocket.OPEN && open;
 
-  return {
-    connect,
-    disconnect,
-    sendFrame,
-    sendAudio,
-    sendText,
-    isOpen,
-  };
+  return { connect, disconnect, sendFrame, sendAudio, sendText, isOpen };
 }
