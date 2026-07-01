@@ -6,9 +6,10 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model Live API yang aktif dan GA per Juli 2026.
-// gemini-2.0-flash-live-001 sudah discontinued sejak 1 Juni 2026.
-const MODEL_ID = "gemini-live-2.5-flash-native-audio";
+// Model Live API untuk Google AI (generativelanguage.googleapis.com) v1beta.
+// - gemini-live-2.5-flash-native-audio  → format Vertex AI, TIDAK work di v1beta
+// - gemini-2.5-flash-preview-native-audio → format Google AI, work di v1beta
+const MODEL_ID = "gemini-2.5-flash-preview-native-audio";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -68,7 +69,9 @@ export function createGeminiLiveClient({
           generationConfig: {
             temperature: 0.4,
             maxOutputTokens: 512,
-            responseModalities: enableAudioOutput ? ["AUDIO"] : ["TEXT"],
+            // gemini-2.5-flash-preview-native-audio adalah native audio model.
+            // Default output-nya AUDIO. Kalau mau TEXT juga, tambahkan "TEXT".
+            responseModalities: enableAudioOutput ? ["AUDIO"] : ["AUDIO", "TEXT"],
           },
           systemInstruction: systemInstruction
             ? {
