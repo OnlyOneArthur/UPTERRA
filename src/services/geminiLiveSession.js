@@ -8,7 +8,7 @@ function createError(code, message, details, recoverable = true) {
   return { code, message, details, recoverable }
 }
 
-export function useGeminiLiveSession(config) {
+export function useGeminiLiveSession(config = {}) {
   const [state, setState] = useState({
     isConnected: false,
     isRecording: false,
@@ -119,11 +119,11 @@ export function useGeminiLiveSession(config) {
       const name = err.name || ''
       let geminiError
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        geminiError = createError('PERMISSION_DENIED', 'Camera/mic permission denied. Allow in browser settings.', err)
+        geminiError = createError('PERMISSION_DENIED', 'Izin kamera dan mikrofon ditolak. Silakan izinkan di pengaturan browser.', err)
       } else if (name === 'NotFoundError') {
-        geminiError = createError('MEDIA_DEVICE_NOT_FOUND', 'No camera or microphone found.', err, false)
+        geminiError = createError('MEDIA_DEVICE_NOT_FOUND', 'Kamera atau mikrofon tidak ditemukan.', err, false)
       } else {
-        geminiError = createError('MEDIA_ACCESS_FAILED', 'Failed to access media devices.', err)
+        geminiError = createError('MEDIA_ACCESS_FAILED', 'Gagal mengakses perangkat kamera/mikrofon.', err)
       }
       handleError(geminiError)
     }
@@ -138,7 +138,7 @@ export function useGeminiLiveSession(config) {
     try {
       recorder.stop()
     } catch (err) {
-      handleError(createError('RECORDING_STOP_FAILED', 'Failed to stop recording.', err))
+      handleError(createError('RECORDING_STOP_FAILED', 'Gagal menghentikan recording.', err))
     }
   }, [handleError, updateState])
 
@@ -153,7 +153,7 @@ export function useGeminiLiveSession(config) {
       }
       updateState({ isConnected: true })
     } catch (err) {
-      handleError(createError('SESSION_START_FAILED', 'Failed to start Gemini Live session.', err))
+      handleError(createError('SESSION_START_FAILED', 'Gagal memulai sesi Gemini Live.', err))
       updateState({ isSessionActive: false })
     }
   }, [state.isSessionActive, config, startRecording, handleError, updateState])
@@ -179,7 +179,7 @@ export function useGeminiLiveSession(config) {
       }
       updateState({ isConnected: false, isSessionActive: false })
     } catch (err) {
-      handleError(createError('SESSION_STOP_FAILED', 'Error ending session.', err))
+      handleError(createError('SESSION_STOP_FAILED', 'Error saat mengakhiri sesi.', err))
     }
   }, [state.isSessionActive, state.isRecording, state.recording, stopRecording, handleError, updateState])
 

@@ -34,16 +34,23 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
   const hasTranscript = transcript.length > 0
   const hasRecording = recording && recording.blob
 
+  const statusText = isConnected 
+    ? 'CONNECTED' 
+    : isSessionActive 
+      ? 'INITIALIZING' 
+      : error 
+        ? 'CONNECTION BERMASALAH' 
+        : 'READY'
+
   return (
     <div className={`w-full max-w-4xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden ${className}`}>
       <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900">
         <div className="flex items-center gap-3">
-          <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500' : isSessionActive ? 'bg-amber-500' : 'bg-zinc-400'}`} />
+          <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500' : isSessionActive ? 'bg-amber-500' : error ? 'bg-red-500' : 'bg-zinc-400'}`} />
           <div>
             <div className="font-semibold text-zinc-900 dark:text-white text-lg tracking-tight">Gemini Live Session</div>
             <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-              {isConnected ? 'CONNECTED' : isSessionActive ? 'INITIALIZING' : 'READY'} 
-              {isRecording && ' • RECORDING'}
+              {statusText} {isRecording && '• RECORDING'}
             </div>
           </div>
         </div>
@@ -55,14 +62,14 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
               disabled={!!error && !error.recoverable}
               className="inline-flex items-center justify-center px-5 py-2 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 active:scale-[0.985] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Start Session
+              Mulai Sesi
             </button>
           ) : (
             <button
               onClick={stopSession}
               className="inline-flex items-center justify-center px-5 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-[0.985] transition-all"
             >
-              End Session
+              Akhiri Sesi
             </button>
           )}
 
@@ -73,7 +80,7 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
                 ? 'bg-red-600 text-white hover:bg-red-700' 
                 : 'border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
             >
-              {isRecording ? 'Stop Recording' : 'Start Recording'}
+              {isRecording ? 'Stop Recording' : 'Mulai Recording'}
             </button>
           )}
         </div>
@@ -96,7 +103,7 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
                 onClick={retryConnection}
                 className="shrink-0 px-4 py-1.5 text-xs font-medium rounded-lg border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50"
               >
-                Retry
+                Coba Lagi
               </button>
             )}
             <button onClick={clearSession} className="shrink-0 text-red-500 hover:text-red-600 p-1">×</button>
@@ -119,7 +126,9 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
           <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl h-[320px] overflow-y-auto p-4 font-mono text-sm space-y-4">
             {!hasTranscript && (
               <div className="h-full flex items-center justify-center text-zinc-400 text-sm">
-                {isSessionActive ? 'Transcript will appear here as the conversation progresses...' : 'Start a session to begin capturing transcript'}
+                {isSessionActive 
+                  ? 'Transcript akan muncul saat percakapan berlangsung...' 
+                  : 'Mulai sesi untuk mulai merekam transcript'}
               </div>
             )}
             {transcript.map((entry) => (
@@ -145,7 +154,7 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
       {(hasRecording || hasTranscript) && !isSessionActive && (
         <div className="px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex flex-wrap gap-3 items-center justify-between">
           <div className="text-sm text-zinc-600 dark:text-zinc-400">
-            Session ended • {transcript.length} messages captured
+            Sesi selesai • {transcript.length} pesan
             {recording && ` • ${(recording.size / (1024 * 1024)).toFixed(1)} MB recording`}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -167,7 +176,7 @@ export function GeminiLiveSessionRecorder({ session, className = '', showTranscr
 
       {compact && isRecording && (
         <div className="px-6 py-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-2 border-t border-zinc-100 dark:border-zinc-800">
-          <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Recording active — {transcript.length} turns captured
+          <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" /> Recording aktif — {transcript.length} turns
         </div>
       )}
     </div>
