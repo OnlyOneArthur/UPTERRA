@@ -5,7 +5,6 @@ import BottomNav from '../components/layout/BottomNav';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import '../styles/scan.css';
 
-// Pick a supported MediaRecorder mimeType (VP9+Opus fails on Firefox)
 function getSupportedMimeType() {
   const candidates = [
     'video/webm;codecs=vp8,opus',
@@ -47,7 +46,6 @@ export default function ScanPage() {
 
   const sessionActive = isLive;
 
-  // Unlock AudioContext + speechSynthesis on first user tap
   const unlockAudio = useCallback(() => {
     if (audioUnlocked) return;
     try {
@@ -62,26 +60,26 @@ export default function ScanPage() {
     setAudioUnlocked(true);
   }, [audioUnlocked]);
 
-  // Start Gemini Live session after audio unlock
   useEffect(() => {
     if (!audioUnlocked) return;
     startSession();
     return () => stopSession();
-  }, [audioUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [audioUnlocked]);
 
-  // FIX: Helper to safely start video playback on Android browsers
-  // Android Chromium/Firefox require an explicit .play() call after srcObject is set.
   const attachStream = useCallback((stream) => {
     const video = videoRef.current;
     if (!video) return;
     video.srcObject = stream;
-    // .play() returns a Promise; catch any AbortError/NotAllowedError gracefully
-    video.play().catch((err) => {
-      console.warn('[ScanPage] video.play() failed:', err);
-    });
+    const tryPlay = () => {
+      video.play().catch(() => {});
+    };
+    if (video.readyState >= 1) {
+      tryPlay();
+    } else {
+      video.onloadedmetadata = tryPlay;
+    }
   }, []);
 
-  // Camera stream + MediaRecorder setup
   useEffect(() => {
     let localStream = null;
 
@@ -114,22 +112,7 @@ export default function ScanPage() {
       }
     };
 
-    // FIX: Use exact facingMode string (not ideal object) for broader Android support.
-    // Also try environment camera first, fall back to any video, then video-only.
-    const tryGetCamera = () =>
-      navigator.mediaDevices
-        .getUserMedia({ video: { facingMode: 'environment' }, audio: true })
-        .catch(() =>
-          navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        )
-        .catch(() =>
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-        )
-        .catch(() =>
-          navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        );
-
-    tryGetCamera()
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((s) => {
         localStream = s;
         setCameraActive(true);
@@ -146,7 +129,6 @@ export default function ScanPage() {
     };
   }, [attachStream]);
 
-  // Start/stop recorder based on sessionActive
   useEffect(() => {
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
@@ -167,7 +149,6 @@ export default function ScanPage() {
     }
   }, [sessionActive]);
 
-  // Send video frame every 2.5s when session is live
   useEffect(() => {
     if (!sessionActive || !videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -212,12 +193,10 @@ export default function ScanPage() {
     isLive                  ? 'live'        : 'idle';
 
   return (
-    // FIX: Wrap in same page shell as Home (min-h-screen + max-w-md centered)
     <div className="min-h-screen bg-[#0a0a0a] font-poppins" onClick={unlockAudio}>
       <div className="mx-auto max-w-md relative" style={{ minHeight: '100dvh' }}>
         <div className="sp-root">
 
-          {/* ── Splash unlock overlay ── */}
           {!audioUnlocked && (
             <div className="sp-unlock-overlay">
               <div className="sp-unlock-card">
@@ -230,13 +209,12 @@ export default function ScanPage() {
                   </svg>
                 </div>
                 <h2 className="sp-unlock-title">UPTERRA AI</h2>
-                <p className="sp-unlock-desc">Ketuk untuk mengaktifkan kamera &amp; Gemini Live</p>
+                <p className="sp-unlock-desc">Ketuk untuk mengaktifkan kamera & Gemini Live</p>
                 <button className="sp-unlock-btn">Mulai Scan</button>
               </div>
             </div>
           )}
 
-          {/* ── Camera view ── */}
           <div className="sp-cam-root">
             {cameraActive ? (
               <video
@@ -252,7 +230,7 @@ export default function ScanPage() {
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
-                <p>Izin kamera diperlukan</p>
+                  <p>Izin kamera diperlukan</p>
               </div>
             )}
 
@@ -292,7 +270,6 @@ export default function ScanPage() {
               />
             </div>
 
-            {/* ── Chat input ── */}
             <form className="sp-text-input-wrap" onSubmit={handleSendText} onClick={(e) => e.stopPropagation()}>
               <input
                 className="sp-text-input"
