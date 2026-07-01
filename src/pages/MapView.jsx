@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Navigation, MapPin, X, SlidersHorizontal, AlertTriangle, Camera } from "lucide-react";
+import {
+  Search,
+  Navigation,
+  MapPin,
+  X,
+  SlidersHorizontal,
+  AlertTriangle,
+  Camera,
+} from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
 
 // ─── Titik Pengumpulan Sampah Terpilah (BUKAN TPA) ───────────────────────────
@@ -97,12 +105,15 @@ const filters = [
   { key: "tps3r", label: "TPS3R", color: "#3da85e" },
   { key: "banksampah", label: "Bank Sampah", color: "#e0963b" },
   { key: "ewaste", label: "Dropbox E-Waste", color: "#4a90d9" },
-  { key: "laporan", label: "Sampah Liar", color: "#e03535" },
+  { key: "laporan", label: "Sampah numpuk", color: "#e03535" },
 ];
 
 function loadLeaflet() {
   return new Promise((resolve) => {
-    if (window.L) { resolve(window.L); return; }
+    if (window.L) {
+      resolve(window.L);
+      return;
+    }
     if (!document.getElementById("leaflet-css")) {
       const link = document.createElement("link");
       link.id = "leaflet-css";
@@ -118,7 +129,10 @@ function loadLeaflet() {
       document.head.appendChild(script);
     } else {
       const interval = setInterval(() => {
-        if (window.L) { clearInterval(interval); resolve(window.L); }
+        if (window.L) {
+          clearInterval(interval);
+          resolve(window.L);
+        }
       }, 50);
     }
   });
@@ -155,8 +169,8 @@ export default function MapView() {
     return matchType && matchSearch;
   });
 
-  const filteredReports = illegalDumps.filter(() =>
-    activeFilter === "semua" || activeFilter === "laporan"
+  const filteredReports = illegalDumps.filter(
+    () => activeFilter === "semua" || activeFilter === "laporan",
   );
 
   // ─── Init map ─────────────────────────────────────────────────────────────
@@ -211,13 +225,13 @@ export default function MapView() {
   useEffect(() => {
     if (!mapInstanceRef.current || !window.L) return;
     markersRef.current.forEach(({ point, marker }) => {
-      const visible =
-        activeFilter === "semua" ||
-        activeFilter === point.type;
+      const visible = activeFilter === "semua" || activeFilter === point.type;
       if (visible) {
-        if (!mapInstanceRef.current.hasLayer(marker)) marker.addTo(mapInstanceRef.current);
+        if (!mapInstanceRef.current.hasLayer(marker))
+          marker.addTo(mapInstanceRef.current);
       } else {
-        if (mapInstanceRef.current.hasLayer(marker)) mapInstanceRef.current.removeLayer(marker);
+        if (mapInstanceRef.current.hasLayer(marker))
+          mapInstanceRef.current.removeLayer(marker);
       }
     });
     if (selectedPoint && !selectedPoint.isReport) {
@@ -248,11 +262,15 @@ export default function MapView() {
         iconAnchor: [16, 32],
         popupAnchor: [0, -36],
       });
-      const marker = L.marker([report.lat, report.lng], { icon: reportIcon }).addTo(mapInstanceRef.current);
+      const marker = L.marker([report.lat, report.lng], {
+        icon: reportIcon,
+      }).addTo(mapInstanceRef.current);
       reportMarkersRef.current.push({ id: report.id, marker });
       marker.on("click", () => {
         setSelectedPoint({ ...report, isReport: true });
-        mapInstanceRef.current.setView([report.lat, report.lng], 15, { animate: true });
+        mapInstanceRef.current.setView([report.lat, report.lng], 15, {
+          animate: true,
+        });
       });
     });
   }, [illegalDumps, activeFilter]);
@@ -260,7 +278,10 @@ export default function MapView() {
   const flyToPoint = (point, isReport = false) => {
     setSelectedPoint({ ...point, isReport });
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([point.lat, point.lng], 16, { animate: true, duration: 0.8 });
+      mapInstanceRef.current.setView([point.lat, point.lng], 16, {
+        animate: true,
+        duration: 0.8,
+      });
     }
   };
 
@@ -278,10 +299,14 @@ export default function MapView() {
       },
       () => {
         // fallback to centre of Denpasar if permission denied
-        setReportGps({ lat: -8.6705, lng: 115.2126, label: "Denpasar (perkiraan)" });
+        setReportGps({
+          lat: -8.6705,
+          lng: 115.2126,
+          label: "Denpasar (perkiraan)",
+        });
         setReportGpsLoading(false);
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 8000, enableHighAccuracy: true },
     );
   };
 
@@ -292,7 +317,12 @@ export default function MapView() {
       id: Date.now(),
       name: `Laporan Sampah Liar #${illegalDumps.length + 1}`,
       address: reportGps.label,
-      meta: new Date().toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }),
+      meta: new Date().toLocaleString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "short",
+      }),
       type: "laporan",
       badge: "Sampah Liar",
       badgeColor: "#e03535",
@@ -322,8 +352,10 @@ export default function MapView() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-poppins">
-      <div className="relative w-full max-w-sm bg-white shadow-xl overflow-hidden" style={{ height: "100dvh" }}>
-
+      <div
+        className="relative w-full max-w-sm bg-white shadow-xl overflow-hidden"
+        style={{ height: "100dvh" }}
+      >
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-[1000] bg-white px-4 pt-5 pb-3 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
           <div className="flex items-center gap-2 bg-[#f4f4f4] rounded-full px-4 py-2.5">
@@ -379,18 +411,43 @@ export default function MapView() {
             className="absolute left-4 right-4 z-[1001] bg-white rounded-[16px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] p-4"
             style={{ top: `${HEADER_H + 8}px` }}
           >
-            <p className="text-[12px] font-bold text-[#2d2d2d] mb-1">Titik Pengumpulan Sampah Terpilah</p>
-            <p className="text-[10px] text-[#aaa] mb-3">Bukan TPA — hanya fasilitas resmi & ramah warga</p>
+            <p className="text-[12px] font-bold text-[#2d2d2d] mb-1">
+              Titik Pengumpulan Sampah Terpilah
+            </p>
+            <p className="text-[10px] text-[#aaa] mb-3">
+              Bukan TPA — hanya fasilitas resmi & ramah warga
+            </p>
             {[
-              { color: "#3da85e", label: "TPS3R", desc: "Tempat Pengolahan Sampah 3R dikelola desa/komunitas" },
-              { color: "#e0963b", label: "Bank Sampah", desc: "Menerima setoran material daur ulang harian" },
-              { color: "#4a90d9", label: "Dropbox E-Waste", desc: "Titik resmi pemerintah/swasta untuk limbah elektronik" },
-              { color: "#e03535", label: "Sampah Liar", desc: "Laporan crowdsourcing warga — tumpukan sampah ilegal" },
+              {
+                color: "#3da85e",
+                label: "TPS3R",
+                desc: "Tempat Pengolahan Sampah 3R dikelola desa/komunitas",
+              },
+              {
+                color: "#e0963b",
+                label: "Bank Sampah",
+                desc: "Menerima setoran material daur ulang harian",
+              },
+              {
+                color: "#4a90d9",
+                label: "Dropbox E-Waste",
+                desc: "Titik resmi pemerintah/swasta untuk limbah elektronik",
+              },
+              {
+                color: "#e03535",
+                label: "Sampah Liar",
+                desc: "Laporan crowdsourcing warga — tumpukan sampah ilegal",
+              },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3 mb-2">
-                <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <div
+                  className="h-3 w-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: item.color }}
+                />
                 <div>
-                  <p className="text-[12px] font-semibold text-[#333]">{item.label}</p>
+                  <p className="text-[12px] font-semibold text-[#333]">
+                    {item.label}
+                  </p>
                   <p className="text-[10px] text-[#aaa]">{item.desc}</p>
                 </div>
               </div>
@@ -426,7 +483,10 @@ export default function MapView() {
 
         {/* FAB — Lapor Sampah Liar */}
         <button
-          onClick={() => { setShowReportSheet(true); detectGps(); }}
+          onClick={() => {
+            setShowReportSheet(true);
+            detectGps();
+          }}
           className="absolute z-[1001] flex items-center gap-2 rounded-full px-4 py-3 text-white text-[12px] font-bold shadow-[0_4px_16px_rgba(224,53,53,0.35)] active:scale-95 transition-transform"
           style={{
             bottom: `${BOTTOM_TOTAL + 72}px`,
@@ -435,7 +495,7 @@ export default function MapView() {
           }}
         >
           <AlertTriangle size={14} />
-          Lapor Sampah Liar
+          Lapor Sampah
         </button>
 
         {/* Selected Point Card */}
@@ -450,17 +510,32 @@ export default function MapView() {
                   className="mt-1 flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0"
                   style={{ backgroundColor: selectedPoint.badgeColor + "20" }}
                 >
-                  {selectedPoint.isReport
-                    ? <AlertTriangle size={16} style={{ color: selectedPoint.badgeColor }} />
-                    : <MapPin size={16} style={{ color: selectedPoint.badgeColor }} />
-                  }
+                  {selectedPoint.isReport ? (
+                    <AlertTriangle
+                      size={16}
+                      style={{ color: selectedPoint.badgeColor }}
+                    />
+                  ) : (
+                    <MapPin
+                      size={16}
+                      style={{ color: selectedPoint.badgeColor }}
+                    />
+                  )}
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-[#2d2d2d] leading-snug">{selectedPoint.name}</p>
-                  <p className="text-[11px] text-[#888] mt-0.5">{selectedPoint.address}</p>
-                  <p className="text-[10px] text-[#aaa] mt-0.5">{selectedPoint.meta}</p>
+                  <p className="text-[13px] font-semibold text-[#2d2d2d] leading-snug">
+                    {selectedPoint.name}
+                  </p>
+                  <p className="text-[11px] text-[#888] mt-0.5">
+                    {selectedPoint.address}
+                  </p>
+                  <p className="text-[10px] text-[#aaa] mt-0.5">
+                    {selectedPoint.meta}
+                  </p>
                   {selectedPoint.desc && (
-                    <p className="text-[10px] text-[#aaa] mt-0.5 italic">{selectedPoint.desc}</p>
+                    <p className="text-[10px] text-[#aaa] mt-0.5 italic">
+                      {selectedPoint.desc}
+                    </p>
                   )}
                 </div>
               </div>
@@ -493,7 +568,10 @@ export default function MapView() {
               )}
               <span
                 className="flex items-center justify-center rounded-full px-4 py-2 text-[11px] font-semibold"
-                style={{ backgroundColor: selectedPoint.badgeColor + "18", color: selectedPoint.badgeColor }}
+                style={{
+                  backgroundColor: selectedPoint.badgeColor + "18",
+                  color: selectedPoint.badgeColor,
+                }}
               >
                 {selectedPoint.badge}
               </span>
@@ -514,10 +592,14 @@ export default function MapView() {
               {activeFilter === "semua"
                 ? "Fasilitas Pengumpulan Terpilah"
                 : activeFilter === "laporan"
-                ? "Laporan Sampah Liar"
-                : filters.find((f) => f.key === activeFilter)?.label}
+                  ? "Laporan Sampah Liar"
+                  : filters.find((f) => f.key === activeFilter)?.label}
               <span className="ml-1.5 text-[11px] font-normal text-[#aaa]">
-                ({activeFilter === "laporan" ? filteredReports.length : filtered.length})
+                (
+                {activeFilter === "laporan"
+                  ? filteredReports.length
+                  : filtered.length}
+                )
               </span>
             </p>
           </div>
@@ -531,8 +613,12 @@ export default function MapView() {
               filteredReports.length === 0 ? (
                 <div className="flex flex-col items-center justify-center pt-6 text-center">
                   <AlertTriangle size={28} className="text-[#ccc]" />
-                  <p className="mt-2 text-[13px] font-semibold text-[#aaa]">Belum ada laporan sampah liar</p>
-                  <p className="text-[11px] text-[#ccc] mt-1">Tekan tombol merah di peta untuk melapor</p>
+                  <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
+                    Belum ada laporan sampah liar
+                  </p>
+                  <p className="text-[11px] text-[#ccc] mt-1">
+                    Tekan tombol merah di peta untuk melapor
+                  </p>
                 </div>
               ) : (
                 filteredReports.map((r) => (
@@ -540,15 +626,21 @@ export default function MapView() {
                     key={r.id}
                     onClick={() => flyToPoint(r, true)}
                     className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
-                      selectedPoint?.id === r.id ? "bg-[#fff0f0]" : "bg-[#fafafa] active:bg-[#f5f5f5]"
+                      selectedPoint?.id === r.id
+                        ? "bg-[#fff0f0]"
+                        : "bg-[#fafafa] active:bg-[#f5f5f5]"
                     }`}
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 bg-[#fff0f0]">
                       <AlertTriangle size={15} className="text-[#e03535]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">{r.name}</p>
-                      <p className="text-[10px] text-[#999] mt-0.5 truncate">{r.address}</p>
+                      <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">
+                        {r.name}
+                      </p>
+                      <p className="text-[10px] text-[#999] mt-0.5 truncate">
+                        {r.address}
+                      </p>
                     </div>
                     <span className="rounded-full px-2.5 py-1 text-[9px] font-semibold flex-shrink-0 bg-[#fff0f0] text-[#e03535]">
                       Sampah Liar
@@ -556,40 +648,49 @@ export default function MapView() {
                   </button>
                 ))
               )
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center pt-8 text-center">
+                <MapPin size={28} className="text-[#ccc]" />
+                <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
+                  Tidak ada lokasi ditemukan
+                </p>
+              </div>
             ) : (
-              filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center pt-8 text-center">
-                  <MapPin size={28} className="text-[#ccc]" />
-                  <p className="mt-2 text-[13px] font-semibold text-[#aaa]">Tidak ada lokasi ditemukan</p>
-                </div>
-              ) : (
-                filtered.map((point) => (
-                  <button
-                    key={point.id}
-                    onClick={() => flyToPoint(point)}
-                    className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
-                      selectedPoint?.id === point.id ? "bg-[#f0faf3]" : "bg-[#fafafa] active:bg-[#f0f0f0]"
-                    }`}
+              filtered.map((point) => (
+                <button
+                  key={point.id}
+                  onClick={() => flyToPoint(point)}
+                  className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
+                    selectedPoint?.id === point.id
+                      ? "bg-[#f0faf3]"
+                      : "bg-[#fafafa] active:bg-[#f0f0f0]"
+                  }`}
+                >
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0"
+                    style={{ backgroundColor: point.badgeColor + "20" }}
                   >
-                    <div
-                      className="flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0"
-                      style={{ backgroundColor: point.badgeColor + "20" }}
-                    >
-                      <MapPin size={15} style={{ color: point.badgeColor }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">{point.name}</p>
-                      <p className="text-[10px] text-[#999] mt-0.5">{point.meta}</p>
-                    </div>
-                    <span
-                      className="rounded-full px-2.5 py-1 text-[9px] font-semibold flex-shrink-0"
-                      style={{ backgroundColor: point.badgeColor + "18", color: point.badgeColor }}
-                    >
-                      {point.badge}
-                    </span>
-                  </button>
-                ))
-              )
+                    <MapPin size={15} style={{ color: point.badgeColor }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">
+                      {point.name}
+                    </p>
+                    <p className="text-[10px] text-[#999] mt-0.5">
+                      {point.meta}
+                    </p>
+                  </div>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[9px] font-semibold flex-shrink-0"
+                    style={{
+                      backgroundColor: point.badgeColor + "18",
+                      color: point.badgeColor,
+                    }}
+                  >
+                    {point.badge}
+                  </span>
+                </button>
+              ))
             )}
           </div>
         </div>
@@ -608,11 +709,15 @@ export default function MapView() {
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#e0e0e0]" />
               <div className="flex items-center gap-2 mb-4">
                 <AlertTriangle size={16} className="text-[#e03535]" />
-                <h3 className="text-[15px] font-bold text-[#2d2d2d]">Lapor Sampah Liar</h3>
+                <h3 className="text-[15px] font-bold text-[#2d2d2d]">
+                  Lapor Sampah numpuk
+                </h3>
               </div>
 
               {/* Photo */}
-              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">Foto Tumpukan Sampah</p>
+              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">
+                Foto Tumpukan Sampah
+              </p>
               <input
                 ref={reportFileRef}
                 type="file"
@@ -628,9 +733,16 @@ export default function MapView() {
               />
               {reportPhotoPreview ? (
                 <div className="relative mb-3">
-                  <img src={reportPhotoPreview} alt="preview" className="h-[140px] w-full object-cover rounded-[16px]" />
+                  <img
+                    src={reportPhotoPreview}
+                    alt="preview"
+                    className="h-[140px] w-full object-cover rounded-[16px]"
+                  />
                   <button
-                    onClick={() => { setReportPhoto(null); setReportPhotoPreview(null); }}
+                    onClick={() => {
+                      setReportPhoto(null);
+                      setReportPhotoPreview(null);
+                    }}
                     className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50"
                   >
                     <X size={12} className="text-white" />
@@ -642,30 +754,44 @@ export default function MapView() {
                   className="flex h-[120px] w-full flex-col items-center justify-center gap-2 rounded-[16px] border-2 border-dashed border-[#e0e0e0] bg-[#fafafa] mb-3 active:bg-[#f5f5f5] transition"
                 >
                   <Camera size={20} className="text-[#bbb]" />
-                  <p className="text-[11px] text-[#ccc]">Ambil foto kondisi sampah</p>
+                  <p className="text-[11px] text-[#ccc]">
+                    Ambil foto kondisi sampah
+                  </p>
                 </button>
               )}
 
               {/* GPS */}
-              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">Koordinat GPS</p>
+              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">
+                Koordinat GPS
+              </p>
               <div className="flex items-center gap-3 rounded-[14px] bg-[#f4f4f4] px-4 py-3 mb-3">
                 <MapPin size={15} className="text-[#3da85e] flex-shrink-0" />
                 {reportGpsLoading ? (
-                  <p className="text-[12px] text-[#aaa]">Mendeteksi lokasi...</p>
+                  <p className="text-[12px] text-[#aaa]">
+                    Mendeteksi lokasi...
+                  </p>
                 ) : reportGps ? (
-                  <p className="text-[12px] text-[#2d2d2d]">{reportGps.label}</p>
+                  <p className="text-[12px] text-[#2d2d2d]">
+                    {reportGps.label}
+                  </p>
                 ) : (
-                  <p className="text-[12px] text-[#bbb]">Lokasi belum terdeteksi</p>
+                  <p className="text-[12px] text-[#bbb]">
+                    Lokasi belum terdeteksi
+                  </p>
                 )}
               </div>
 
               {/* Kategori */}
-              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">Jenis Sampah (opsional)</p>
+              <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">
+                Jenis Sampah (opsional)
+              </p>
               <div className="flex flex-wrap gap-2 mb-5">
                 {["Organik", "Anorganik", "Elektronik", "Campuran"].map((k) => (
                   <button
                     key={k}
-                    onClick={() => setReportKategori(reportKategori === k ? "" : k)}
+                    onClick={() =>
+                      setReportKategori(reportKategori === k ? "" : k)
+                    }
                     className={`rounded-full px-3 py-1.5 text-[11px] font-medium border transition ${
                       reportKategori === k
                         ? "bg-[#e03535] border-[#e03535] text-white"
