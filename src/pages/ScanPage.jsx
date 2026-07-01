@@ -58,6 +58,14 @@ export default function ScanPage() {
       window.speechSynthesis.cancel();
     }
     setAudioUnlocked(true);
+
+    // Safety: force video play on user gesture (fixes black after permission in Chromium)
+    const video = videoRef.current;
+    if (video && video.srcObject) {
+      video.play().catch(() => {
+        setTimeout(() => video.play().catch(() => {}), 50);
+      });
+    }
   }, [audioUnlocked]);
 
   useEffect(() => {
@@ -74,9 +82,7 @@ export default function ScanPage() {
     video.muted = true;
     video.playsInline = true;
 
-    // Direct play attempt (in user gesture context)
     video.play().catch(() => {
-      // one retry shortly after if blocked
       setTimeout(() => {
         video.play().catch(() => {});
       }, 80);
@@ -84,8 +90,6 @@ export default function ScanPage() {
   }, []);
 
   useEffect(() => {
-    if (!audioUnlocked) return;
-
     let localStream = null;
 
     const initMediaRecorder = (stream) => {
@@ -132,7 +136,7 @@ export default function ScanPage() {
         mediaRecorderRef.current.stop();
       }
     };
-  }, [audioUnlocked, attachStream]);
+  }, [attachStream]);
 
   useEffect(() => {
     const recorder = mediaRecorderRef.current;
