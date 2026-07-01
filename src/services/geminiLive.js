@@ -7,7 +7,6 @@
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model ID per API reference Live API (ai.google.dev/api/live)
 const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
@@ -20,19 +19,32 @@ function safeSend(ws, payload) {
 }
 
 /**
- * createGeminiLiveClient
- *
- * @param {Object} options
- * @param {string} options.apiKey            - Gemini API key dari VITE_GEMINI_API_KEY
- * @param {string} options.systemInstruction - System prompt untuk sesi
- * @param {(text: string) => void} options.onText
- * @param {(entry: { role: "user"|"ai", text: string }) => void} options.onTranscript
- * @param {(data: string, mimeType: string) => void} options.onAudioChunk
- * @param {() => void} options.onReady
- * @param {() => void} options.onClose
- * @param {(msg: string) => void} options.onError
- * @param {(level: number) => void} options.onAudioLevel
+ * Parse incoming WebSocket message data.
+ * Live API bisa kirim:
+ *   - string  : JSON text frame (setup complete, transcripts, etc)
+ *   - Blob    : binary frame yang isinya tetap JSON (audio wrapped in JSON)
+ * @param {string|Blob|ArrayBuffer} data
+ * @returns {Promise<object|null>}
  */
+async function parseMessage(data) {
+  try {
+    if (typeof data === "string") {
+      return JSON.parse(data);
+    }
+    if (data instanceof Blob) {
+      const text = await data.text();
+      return JSON.parse(text);
+    }
+    if (data instanceof ArrayBuffer) {
+      const text = new TextDecoder().decode(data);
+      return JSON.parse(text);
+    }
+  } catch (err) {
+    console.warn("[GeminiLive] Failed to parse message", err);
+  }
+  return null;
+}
+
 export function createGeminiLiveClient({
   apiKey,
   systemInstruction = "",
@@ -59,12 +71,6 @@ export function createGeminiLiveClient({
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-      // Struktur setup sesuai BidiGenerateContentSetup API reference:
-      // https://ai.google.dev/api/live#BidiGenerateContentSetup
-      //
-      // generationConfig schema:
-      // https://ai.google.dev/api/live (Session configuration section)
-      // responseModalities ada di DALAM generationConfig.
       const setupMessage = {
         setup: {
           model: `models/${MODEL_ID}`,
@@ -87,14 +93,10 @@ export function createGeminiLiveClient({
       safeSend(ws, setupMessage);
     };
 
-    ws.onmessage = (event) => {
-      let msg;
-      try {
-        msg = JSON.parse(event.data);
-      } catch (err) {
-        console.warn("[GeminiLive] Failed to parse server message", err);
-        return;
-      }
+    // onmessage harus async karena Blob.text() adalah Promise
+    ws.onmessage = async (event) => {
+      const msg = await parseMessage(event.data);
+      if (!msg) return;
 
       if (msg.setupComplete) {
         open = true;
