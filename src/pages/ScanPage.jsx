@@ -81,6 +81,8 @@ export default function ScanPage() {
   }, []);
 
   useEffect(() => {
+    if (!audioUnlocked) return;
+
     let localStream = null;
 
     const initMediaRecorder = (stream) => {
@@ -127,7 +129,7 @@ export default function ScanPage() {
         mediaRecorderRef.current.stop();
       }
     };
-  }, [attachStream]);
+  }, [audioUnlocked, attachStream]);
 
   useEffect(() => {
     const recorder = mediaRecorderRef.current;
