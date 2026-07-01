@@ -339,8 +339,15 @@
   backdrop-filter: blur(16px);
   border-radius: 20px 20px 0 0;
   padding: 16px 16px 80px;
-  max-height: 55vh;
+  /* Was 55vh — tall enough to swallow more than half the camera view once
+     a message wrapped to a few lines. Capped smaller so it stays a
+     bottom sheet instead of creeping up over the frame; it scrolls
+     internally (overflow-y) once content passes this height instead of
+     growing further. */
+  max-height: 32vh;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 10px;
