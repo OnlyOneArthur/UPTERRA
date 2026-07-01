@@ -1,8 +1,5 @@
 // ─── Gemini Live WebSocket Client ────────────────────────────────────────────
-// Real-time streaming (video/audio/text) + transcript support.
-// Dipakai oleh: src/hooks/useGeminiLive.js
 // Ref: https://ai.google.dev/api/live#BidiGenerateContentSetup
-// ─────────────────────────────────────────────────────────────────────────────
 
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
@@ -11,34 +8,15 @@ const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  try {
-    ws.send(JSON.stringify(payload));
-  } catch (err) {
-    console.error("[GeminiLive] Failed to send", err);
-  }
+  try { ws.send(JSON.stringify(payload)); }
+  catch (err) { console.error("[GeminiLive] Failed to send", err); }
 }
 
-/**
- * Parse incoming WebSocket message data.
- * Live API bisa kirim:
- *   - string  : JSON text frame (setup complete, transcripts, etc)
- *   - Blob    : binary frame yang isinya tetap JSON (audio wrapped in JSON)
- * @param {string|Blob|ArrayBuffer} data
- * @returns {Promise<object|null>}
- */
 async function parseMessage(data) {
   try {
-    if (typeof data === "string") {
-      return JSON.parse(data);
-    }
-    if (data instanceof Blob) {
-      const text = await data.text();
-      return JSON.parse(text);
-    }
-    if (data instanceof ArrayBuffer) {
-      const text = new TextDecoder().decode(data);
-      return JSON.parse(text);
-    }
+    if (typeof data === "string") return JSON.parse(data);
+    if (data instanceof Blob) return JSON.parse(await data.text());
+    if (data instanceof ArrayBuffer) return JSON.parse(new TextDecoder().decode(data));
   } catch (err) {
     console.warn("[GeminiLive] Failed to parse message", err);
   }
@@ -60,15 +38,10 @@ export function createGeminiLiveClient({
   let open = false;
 
   const connect = () => {
-    if (!apiKey) {
-      onError?.("Gemini API key belum di-set (VITE_GEMINI_API_KEY).");
-      return;
-    }
+    if (!apiKey) { onError?.("Gemini API key belum di-set."); return; }
 
-    const url = `${WS_BASE}?key=${encodeURIComponent(apiKey)}`;
     console.info("[GeminiLive] Connecting...");
-
-    ws = new WebSocket(url);
+    ws = new WebSocket(`${WS_BASE}?key=${encodeURIComponent(apiKey)}`);
 
     ws.onopen = () => {
       const setupMessage = {
@@ -88,15 +61,16 @@ export function createGeminiLiveClient({
           },
         },
       };
-
       console.info("[GeminiLive] Sending setup...");
       safeSend(ws, setupMessage);
     };
 
-    // onmessage harus async karena Blob.text() adalah Promise
     ws.onmessage = async (event) => {
       const msg = await parseMessage(event.data);
       if (!msg) return;
+
+      // ── DEBUG: log semua keys di top-level message ──
+      console.log("[GeminiLive] ⬇️ msg keys:", Object.keys(msg));
 
       if (msg.setupComplete) {
         open = true;
@@ -106,96 +80,74 @@ export function createGeminiLiveClient({
       }
 
       const server = msg.serverContent;
-      if (!server) return;
+      if (!server) {
+        console.log("[GeminiLive] no serverContent, full msg:", JSON.stringify(msg).slice(0, 300));
+        return;
+      }
 
-      // Audio chunks dari model
+      // ── DEBUG: log serverContent keys ──
+      console.log("[GeminiLive] serverContent keys:", Object.keys(server));
+
+      // modelTurn parts (TEXT mode / inline audio)
       if (server.modelTurn?.parts) {
         for (const part of server.modelTurn.parts) {
-          if (
-            part.inlineData &&
-            typeof part.inlineData.data === "string" &&
-            part.inlineData.mimeType?.startsWith("audio/")
-          ) {
+          console.log("[GeminiLive] part keys:", Object.keys(part), "| text:", part.text?.slice(0,80), "| inlineData mimeType:", part.inlineData?.mimeType);
+          if (part.inlineData?.mimeType?.startsWith("audio/")) {
             onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
             onAudioLevel?.(1);
           }
           if (typeof part.text === "string" && part.text.trim()) {
+            console.log("[GeminiLive] → calling onText:", part.text.slice(0, 80));
             onText?.(part.text);
           }
         }
       }
 
-      // Output transcript = teks dari audio AI
+      // outputTranscription (AUDIO mode → teks transkripsi dari audio AI)
       if (server.outputTranscription?.text) {
-        const text = server.outputTranscription.text;
-        onText?.(text);
-        onTranscript?.({ role: "ai", text });
+        console.log("[GeminiLive] outputTranscription.text:", server.outputTranscription.text.slice(0, 80));
+        onTranscript?.({ role: "ai", text: server.outputTranscription.text });
       }
 
-      // Input transcript = teks dari audio user
+      // inputTranscription (suara user yang dikenali)
       if (server.inputTranscription?.text) {
-        onTranscript?.({
-          role: "user",
-          text: server.inputTranscription.text,
-        });
+        console.log("[GeminiLive] inputTranscription.text:", server.inputTranscription.text.slice(0, 80));
+        onTranscript?.({ role: "user", text: server.inputTranscription.text });
+      }
+
+      // turnComplete
+      if (server.turnComplete) {
+        console.log("[GeminiLive] turnComplete");
       }
     };
 
     ws.onerror = (event) => {
       console.error("[GeminiLive] WebSocket error", event);
-      onError?.("Gemini Live WebSocket error. Cek API key, quota, dan koneksi.");
+      onError?.("Gemini Live WebSocket error.");
     };
 
     ws.onclose = (event) => {
-      console.info(
-        "[GeminiLive] WebSocket closed",
-        "code=", event.code,
-        "wasClean=", event.wasClean,
-        "reason=", event.reason || "(no reason)",
-      );
-
+      console.info("[GeminiLive] WebSocket closed", "code=", event.code, "reason=", event.reason || "(no reason)");
       if (!event.wasClean && event.reason) {
         try {
-          const errBody = JSON.parse(event.reason);
-          const msg = errBody?.error?.message || errBody?.message || event.reason;
-          onError?.(`Gemini Live ditutup server: ${msg}`);
-        } catch {
-          onError?.(`Gemini Live ditutup server (code ${event.code}): ${event.reason}`);
-        }
+          const e = JSON.parse(event.reason);
+          onError?.(`Gemini Live: ${e?.error?.message || event.reason}`);
+        } catch { onError?.(`Gemini Live closed (${event.code}): ${event.reason}`); }
       }
-
-      open = false;
-      ws = null;
+      open = false; ws = null;
       onClose?.();
     };
   };
 
   const disconnect = () => {
-    if (ws) {
-      try { ws.close(1000, "client-close"); }
-      catch (err) { console.warn("[GeminiLive] close error", err); }
-    }
-    ws = null;
-    open = false;
+    try { ws?.close(1000, "client-close"); } catch {}
+    ws = null; open = false;
   };
 
-  const sendFrame = (base64Jpeg) => {
-    if (!base64Jpeg) return;
-    safeSend(ws, { realtimeInput: { video: { data: base64Jpeg, mimeType: "image/jpeg" } } });
-  };
-
-  const sendAudio = (base64Pcm) => {
-    if (!base64Pcm) return;
-    safeSend(ws, { realtimeInput: { audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" } } });
-  };
-
-  const sendText = (text) => {
-    const trimmed = text?.trim();
-    if (!trimmed) return;
-    safeSend(ws, { realtimeInput: { text: trimmed } });
-  };
-
-  const isOpen = () => !!ws && ws.readyState === WebSocket.OPEN && open;
+  const sendFrame = (b64) => safeSend(ws, { realtimeInput: { video: { data: b64, mimeType: "image/jpeg" } } });
+  const sendAudio = (b64) => safeSend(ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } });
+  const sendText  = (text) => { const t = text?.trim(); if (t) safeSend(ws, { realtimeInput: { text: t } }); };
+  const isOpen   = () => !!ws && ws.readyState === WebSocket.OPEN && open;
 
   return { connect, disconnect, sendFrame, sendAudio, sendText, isOpen };
 }
