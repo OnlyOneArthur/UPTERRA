@@ -59,7 +59,6 @@ export default function ScanPage() {
     }
     setAudioUnlocked(true);
 
-    // Safety: force video play on user gesture (fixes black after permission in Chromium)
     const video = videoRef.current;
     if (video && video.srcObject) {
       video.play().catch(() => {
@@ -119,7 +118,7 @@ export default function ScanPage() {
       }
     };
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
       .then((s) => {
         localStream = s;
         setCameraActive(true);
