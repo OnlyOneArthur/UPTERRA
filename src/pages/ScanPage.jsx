@@ -82,11 +82,9 @@ export default function ScanPage() {
     video.muted = true;
     video.playsInline = true;
 
-    video.play().catch(() => {
-      setTimeout(() => {
-        video.play().catch(() => {});
-      }, 80);
-    });
+    video.play().catch(() => {});
+    setTimeout(() => video.play().catch(() => {}), 120);
+    setTimeout(() => video.play().catch(() => {}), 350);
   }, []);
 
   useEffect(() => {
