@@ -1,14 +1,13 @@
 // ─── Gemini Live WebSocket Client ────────────────────────────────────────────
 // Real-time streaming (video/audio/text) + transcript support.
 // Dipakai oleh: src/hooks/useGeminiLive.js
-// Ref: https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
+// Ref: https://ai.google.dev/api/live#BidiGenerateContentSetup
 // ─────────────────────────────────────────────────────────────────────────────
 
 const WS_BASE =
   "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-// Model ID per dokumentasi resmi Live API WebSockets (Juli 2026)
-// Ref: https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
+// Model ID per API reference Live API (ai.google.dev/api/live)
 const MODEL_ID = "gemini-3.1-flash-live-preview";
 
 function safeSend(ws, payload) {
@@ -55,24 +54,27 @@ export function createGeminiLiveClient({
     }
 
     const url = `${WS_BASE}?key=${encodeURIComponent(apiKey)}`;
-    console.info("[GeminiLive] Connecting to", url);
+    console.info("[GeminiLive] Connecting...");
 
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-      // Setup message persis seperti dokumentasi resmi:
-      // https://ai.google.dev/gemini-api/docs/live-api/get-started-websocket
+      // Struktur setup sesuai BidiGenerateContentSetup API reference:
+      // https://ai.google.dev/api/live#BidiGenerateContentSetup
       //
-      // PENTING: responseModalities ada di level 'setup', BUKAN di dalam
-      // 'generationConfig'. Salah tempat = server tolak setup dan tutup koneksi.
+      // generationConfig schema:
+      // https://ai.google.dev/api/live (Session configuration section)
+      // responseModalities ada di DALAM generationConfig.
       const setupMessage = {
         setup: {
           model: `models/${MODEL_ID}`,
-          responseModalities: ["AUDIO"],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            temperature: 0.4,
+          },
           systemInstruction: systemInstruction
             ? { parts: [{ text: systemInstruction }] }
             : undefined,
-          // Aktifkan transcription untuk input & output audio
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           realtimeInputConfig: {
@@ -81,7 +83,7 @@ export function createGeminiLiveClient({
         },
       };
 
-      console.info("[GeminiLive] Sending setup...", setupMessage);
+      console.info("[GeminiLive] Sending setup...");
       safeSend(ws, setupMessage);
     };
 
@@ -94,7 +96,6 @@ export function createGeminiLiveClient({
         return;
       }
 
-      // Setup complete → session siap
       if (msg.setupComplete) {
         open = true;
         console.info("[GeminiLive] Setup complete, session live ✅");
@@ -116,14 +117,13 @@ export function createGeminiLiveClient({
             onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
             onAudioLevel?.(1);
           }
-          // Fallback: kalau model kirim text part
           if (typeof part.text === "string" && part.text.trim()) {
             onText?.(part.text);
           }
         }
       }
 
-      // Output transcript = teks dari audio AI (cara utama dapat teks di native audio model)
+      // Output transcript = teks dari audio AI
       if (server.outputTranscription?.text) {
         const text = server.outputTranscription.text;
         onText?.(text);
@@ -170,43 +170,27 @@ export function createGeminiLiveClient({
 
   const disconnect = () => {
     if (ws) {
-      try {
-        ws.close(1000, "client-close");
-      } catch (err) {
-        console.warn("[GeminiLive] close error", err);
-      }
+      try { ws.close(1000, "client-close"); }
+      catch (err) { console.warn("[GeminiLive] close error", err); }
     }
     ws = null;
     open = false;
   };
 
-  // Send single JPEG frame (base64 tanpa prefix data URL)
   const sendFrame = (base64Jpeg) => {
     if (!base64Jpeg) return;
-    safeSend(ws, {
-      realtimeInput: {
-        video: { data: base64Jpeg, mimeType: "image/jpeg" },
-      },
-    });
+    safeSend(ws, { realtimeInput: { video: { data: base64Jpeg, mimeType: "image/jpeg" } } });
   };
 
-  // Send audio chunk (raw PCM 16-bit, 16kHz, little-endian, base64)
   const sendAudio = (base64Pcm) => {
     if (!base64Pcm) return;
-    safeSend(ws, {
-      realtimeInput: {
-        audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" },
-      },
-    });
+    safeSend(ws, { realtimeInput: { audio: { data: base64Pcm, mimeType: "audio/pcm;rate=16000" } } });
   };
 
-  // Send text message
   const sendText = (text) => {
     const trimmed = text?.trim();
     if (!trimmed) return;
-    safeSend(ws, {
-      realtimeInput: { text: trimmed },
-    });
+    safeSend(ws, { realtimeInput: { text: trimmed } });
   };
 
   const isOpen = () => !!ws && ws.readyState === WebSocket.OPEN && open;
