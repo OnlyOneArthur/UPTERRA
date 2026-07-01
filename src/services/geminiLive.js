@@ -28,7 +28,7 @@ export function createGeminiLiveClient({
   systemInstruction = "",
   onText,
   onTranscript,
-  onAudioChunk,
+  onAudioChunk,   // (base64pcm: string, mimeType: string, sampleRate: number) => void
   onReady,
   onClose,
   onError,
@@ -69,9 +69,6 @@ export function createGeminiLiveClient({
       const msg = await parseMessage(event.data);
       if (!msg) return;
 
-      // ── DEBUG: log semua keys di top-level message ──
-      console.log("[GeminiLive] ⬇️ msg keys:", Object.keys(msg));
-
       if (msg.setupComplete) {
         open = true;
         console.info("[GeminiLive] Setup complete, session live ✅");
@@ -80,44 +77,32 @@ export function createGeminiLiveClient({
       }
 
       const server = msg.serverContent;
-      if (!server) {
-        console.log("[GeminiLive] no serverContent, full msg:", JSON.stringify(msg).slice(0, 300));
-        return;
-      }
+      if (!server) return;
 
-      // ── DEBUG: log serverContent keys ──
-      console.log("[GeminiLive] serverContent keys:", Object.keys(server));
-
-      // modelTurn parts (TEXT mode / inline audio)
+      // modelTurn: audio PCM chunks dari Gemini
       if (server.modelTurn?.parts) {
         for (const part of server.modelTurn.parts) {
-          console.log("[GeminiLive] part keys:", Object.keys(part), "| text:", part.text?.slice(0,80), "| inlineData mimeType:", part.inlineData?.mimeType);
-          if (part.inlineData?.mimeType?.startsWith("audio/")) {
-            onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
+          if (part.inlineData?.mimeType?.startsWith("audio/") && part.inlineData.data) {
+            // Parse sample rate dari mimeType, e.g. "audio/pcm;rate=24000"
+            const rateMatch = part.inlineData.mimeType.match(/rate=(\d+)/);
+            const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+            onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType, sampleRate);
             onAudioLevel?.(1);
           }
           if (typeof part.text === "string" && part.text.trim()) {
-            console.log("[GeminiLive] → calling onText:", part.text.slice(0, 80));
             onText?.(part.text);
           }
         }
       }
 
-      // outputTranscription (AUDIO mode → teks transkripsi dari audio AI)
+      // outputTranscription → teks dari audio AI (untuk UI & transcript)
       if (server.outputTranscription?.text) {
-        console.log("[GeminiLive] outputTranscription.text:", server.outputTranscription.text.slice(0, 80));
         onTranscript?.({ role: "ai", text: server.outputTranscription.text });
       }
 
-      // inputTranscription (suara user yang dikenali)
+      // inputTranscription → teks dari suara user
       if (server.inputTranscription?.text) {
-        console.log("[GeminiLive] inputTranscription.text:", server.inputTranscription.text.slice(0, 80));
         onTranscript?.({ role: "user", text: server.inputTranscription.text });
-      }
-
-      // turnComplete
-      if (server.turnComplete) {
-        console.log("[GeminiLive] turnComplete");
       }
     };
 
