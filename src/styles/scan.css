@@ -8,6 +8,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 /* ── ScanPage root ─────────────────────────────────────────── */
+/* FIX: sp-root now fills its max-w-md parent container, not the full viewport width */
 .sp-root {
   position: relative;
   width: 100%;
@@ -56,12 +57,16 @@
 .sp-unlock-btn:hover { opacity:.9; }
 
 /* ── Camera mode root ──────────────────────────────────────── */
+/* FIX: use 100dvh to fill exactly one screen unit inside the parent */
 .sp-cam-root { position:relative; width:100%; height:100dvh; }
 
+/* FIX: video must fill its relative parent, not break out of max-w-md */
 .sp-video {
   position:absolute; inset:0;
   width:100%; height:100%;
   object-fit:cover;
+  /* Ensure Android renders the stream — display:block prevents collapsed video */
+  display: block;
 }
 
 .sp-no-cam {
@@ -119,6 +124,32 @@
 }
 .sp-gallery-btn:hover { background:rgba(255,255,255,.1); }
 
+/* ── Text chat input ────────────────────────────────────────── */
+.sp-text-input-wrap {
+  position:absolute; bottom:140px; left:16px; right:16px;
+  z-index:20;
+  display:flex; gap:8px;
+}
+.sp-text-input {
+  flex:1;
+  background:rgba(0,0,0,.6); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:12px; padding:10px 14px;
+  color:#e5e7eb; font-size:.875rem;
+  outline:none;
+}
+.sp-text-input::placeholder { color:#6b7280; }
+.sp-text-input:disabled { opacity:.5; }
+.sp-text-send {
+  background:rgba(34,197,94,.2); border:1px solid rgba(34,197,94,.3);
+  border-radius:12px; padding:10px 14px;
+  color:#22c55e; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition: background .15s;
+}
+.sp-text-send:disabled { opacity:.4; cursor:not-allowed; }
+.sp-text-send:not(:disabled):hover { background:rgba(34,197,94,.35); }
+
 /* ── Result panel ───────────────────────────────────────────── */
 .sp-result-panel {
   position:absolute; bottom:0; left:0; right:0;
@@ -143,6 +174,16 @@
 }
 .sp-chip-ai { color:#22c55e; }
 .sp-transcript p, .sp-ai-bubble p { color:#e5e7eb; font-size:.875rem; line-height:1.5; margin:0; }
+
+/* ── Download button ────────────────────────────────────────── */
+.sp-download-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.3);
+  color:#22c55e; border-radius:10px; padding:10px 16px;
+  font-size:.82rem; font-weight:500; cursor:pointer;
+  text-decoration:none; transition: background .15s;
+}
+.sp-download-btn:hover { background:rgba(34,197,94,.25); }
 
 /* ── Voice mode ─────────────────────────────────────────────── */
 .sp-voice-root {
@@ -220,6 +261,7 @@
   position:absolute; inset:0;
   width:100%; height:100%;
   object-fit:cover;
+  display: block;
 }
 .svs-no-cam, .svs-loading {
   position:absolute; inset:0;
