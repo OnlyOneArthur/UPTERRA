@@ -22,7 +22,7 @@ const quickActions = [
   { label: "Alamat", icon: MapPin, path: null },
   { label: "Riwayat", icon: RotateCcw, path: null },
   { label: "Metode Pembayaran", icon: CreditCard, path: null },
-  { label: "Mulai Penjualan", icon: Store, path: null },
+  { label: "Mulai Penjualan", icon: Store, path: "/merchant" },
 ];
 
 const categories = [
