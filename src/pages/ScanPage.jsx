@@ -11,6 +11,9 @@ export default function ScanPage() {
   const [cameraActive, setCameraActive] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [textInput, setTextInput] = useState('');
+  const [sessionRecordingUrl, setSessionRecordingUrl] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   const {
     status,
@@ -25,6 +28,8 @@ export default function ScanPage() {
     stopSession,
     sendVideoFrame,
     sendTextMessage,
+    transcript,
+    downloadTranscript,
   } = useGeminiLive();
 
   const sessionActive = isLive;
@@ -51,15 +56,43 @@ export default function ScanPage() {
     return () => stopSession();
   }, [audioUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Camera stream
+  // Camera stream + MediaRecorder setup
   useEffect(() => {
     let localStream = null;
+
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: true,
+      })
       .then((s) => {
         localStream = s;
         setCameraActive(true);
         if (videoRef.current) videoRef.current.srcObject = s;
+
+        try {
+          const recorder = new MediaRecorder(s, {
+            mimeType: 'video/webm;codecs=vp9,opus',
+          });
+          mediaRecorderRef.current = recorder;
+          recordedChunksRef.current = [];
+
+          recorder.ondataavailable = (evt) => {
+            if (evt.data && evt.data.size > 0) {
+              recordedChunksRef.current.push(evt.data);
+            }
+          };
+
+          recorder.onstop = () => {
+            if (!recordedChunksRef.current.length) return;
+            const blob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm',
+            });
+            setSessionRecordingUrl(URL.createObjectURL(blob));
+          };
+        } catch (err) {
+          console.warn('[ScanPage] MediaRecorder init failed', err);
+        }
       })
       .catch(() => {
         navigator.mediaDevices
@@ -71,8 +104,35 @@ export default function ScanPage() {
           })
           .catch(() => setCameraActive(false));
       });
-    return () => { localStream?.getTracks().forEach((t) => t.stop()); };
+
+    return () => {
+      localStream?.getTracks().forEach((t) => t.stop());
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
   }, []);
+
+  // Start/stop recorder based on sessionActive
+  useEffect(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    if (sessionActive && recorder.state === 'inactive') {
+      recordedChunksRef.current = [];
+      try {
+        recorder.start();
+      } catch (err) {
+        console.warn('[ScanPage] recorder.start failed', err);
+      }
+    } else if (!sessionActive && recorder.state === 'recording') {
+      try {
+        recorder.stop();
+      } catch (err) {
+        console.warn('[ScanPage] recorder.stop failed', err);
+      }
+    }
+  }, [sessionActive]);
 
   // Send video frame every 2.5s when session is live
   useEffect(() => {
@@ -208,7 +268,7 @@ export default function ScanPage() {
           </button>
         </form>
 
-        {(detectionResult || lastAiMsg || error) && (
+        {(detectionResult || lastAiMsg || error || sessionRecordingUrl) && (
           <div className="sp-result-panel">
             {error && <div className="sp-error">{typeof error === 'string' ? error : error.msg || 'Terjadi kesalahan.'}</div>}
             {detectionResult && <ScanResultCard result={detectionResult} />}
@@ -223,6 +283,30 @@ export default function ScanPage() {
                 <span className="sp-chip-label sp-chip-ai">UPTERRA AI</span>
                 <p>{lastAiMsg.text}</p>
               </div>
+            )}
+
+            {transcript.length > 0 && (
+              <button
+                className="sp-download-btn"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadTranscript();
+                }}
+              >
+                Download transcript sesi
+              </button>
+            )}
+
+            {sessionRecordingUrl && (
+              <a
+                className="sp-download-btn"
+                href={sessionRecordingUrl}
+                download="upterra-gemini-session.webm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Download rekaman sesi
+              </a>
             )}
           </div>
         )}

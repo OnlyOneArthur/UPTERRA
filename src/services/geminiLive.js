@@ -1,143 +1,218 @@
-// ─── Smart AI Scan with Change Detection ─────────────────────────────────────
-// Only sends frames to Gemini when the image actually changes.
-// This greatly reduces quota usage on free tier.
+// ─── Gemini Live WebSocket Client ────────────────────────────────────────────
+// Real-time streaming (video/audio/text) + transcript support.
+// Dipakai oleh: src/hooks/useGeminiLive.js
 // ─────────────────────────────────────────────────────────────────────────────
-const GEMINI_REST_BASE = "https://generativelanguage.googleapis.com/v1/models";
-const MODEL = "gemini-2.0-flash";
 
-const MIN_INTERVAL_MS = 7000; // 7 seconds minimum between calls
+const WS_BASE =
+  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
 
-function getFrameFingerprint(base64) {
-  if (!base64) return "";
-  const len = base64.length;
-  // Take samples from start, middle, and end for fast comparison
-  return (
-    base64.slice(0, 60) +
-    base64.slice(Math.floor(len * 0.4), Math.floor(len * 0.4) + 40) +
-    base64.slice(len - 60)
-  );
+// Model Live (lihat .env.example)
+// Format di setup: "models/{model_id}"
+const MODEL_ID = "gemini-2.0-flash-live-001";
+
+function safeSend(ws, payload) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  try {
+    ws.send(JSON.stringify(payload));
+  } catch (err) {
+    console.error("[GeminiLive] Failed to send", err);
+  }
 }
 
+/**
+ * createGeminiLiveClient
+ *
+ * @param {Object} options
+ * @param {string} options.apiKey        - Gemini API key dari VITE_GEMINI_API_KEY
+ * @param {string} options.systemInstruction - System prompt untuk sesi
+ * @param {boolean} options.enableAudioOutput - true kalau mau native audio Gemini
+ * @param {(text: string) => void} options.onText
+ * @param {(entry: { role: "user"|"ai", text: string }) => void} options.onTranscript
+ * @param {(data: string, mimeType: string) => void} options.onAudioChunk
+ * @param {() => void} options.onReady
+ * @param {() => void} options.onClose
+ * @param {(msg: string) => void} options.onError
+ * @param {(level: number) => void} options.onAudioLevel
+ */
 export function createGeminiLiveClient({
   apiKey,
   systemInstruction = "",
+  enableAudioOutput = false,
   onText,
+  onTranscript,
+  onAudioChunk,
   onReady,
   onClose,
   onError,
+  onAudioLevel,
 }) {
-  let fallbackTimer = null;
-  let pendingFrame = null;
-  let pendingText = null;
-  let isReady = false;
-  let lastSentTime = 0;
-  let lastFrameFingerprint = "";
-
-  async function restGenerateContent(parts) {
-    if (!apiKey || parts.length === 0) return;
-
-    try {
-      const contents = [];
-
-      if (systemInstruction) {
-        contents.push({
-          role: "user",
-          parts: [{ text: systemInstruction }],
-        });
-      }
-
-      contents.push({ role: "user", parts });
-
-      const body = {
-        contents,
-        generation_config: { temperature: 0.4 },
-      };
-
-      const url = `${GEMINI_REST_BASE}/${MODEL}:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        console.error("[GeminiLive] REST ERROR:", JSON.stringify(errJson, null, 2));
-        const msg = errJson?.error?.message || `HTTP ${res.status}`;
-        onError?.(`Gemini API error: ${msg}`);
-        return;
-      }
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) onText?.(text);
-    } catch (e) {
-      console.error("[GeminiLive] REST fetch failed:", e);
-      onError?.("Gagal menghubungi Gemini API");
-    }
-  }
-
-  function startFallbackLoop() {
-    if (fallbackTimer) return;
-    isReady = true;
-    onReady?.();
-    console.info(`[GeminiLive] Smart mode active (only sends on change, min ${MIN_INTERVAL_MS}ms)`);
-
-    fallbackTimer = setInterval(async () => {
-      const now = Date.now();
-      if (now - lastSentTime < MIN_INTERVAL_MS) return;
-
-      const parts = [];
-      if (pendingFrame) {
-        parts.push({ inlineData: { mimeType: "image/jpeg", data: pendingFrame } });
-        pendingFrame = null;
-      }
-      if (pendingText) {
-        parts.push({ text: pendingText });
-        pendingText = null;
-      }
-      if (parts.length === 0) return;
-
-      lastSentTime = now;
-      await restGenerateContent(parts);
-    }, 1500);
-  }
-
-  function stopFallbackLoop() {
-    if (fallbackTimer) {
-      clearInterval(fallbackTimer);
-      fallbackTimer = null;
-    }
-    isReady = false;
-  }
+  let ws = null;
+  let open = false;
 
   const connect = () => {
-    console.info("[GeminiLive] Starting smart change detection mode");
-    startFallbackLoop();
-  };
-
-  const disconnect = () => stopFallbackLoop();
-  const isOpen = () => isReady;
-
-  // Smart sendFrame with change detection
-  const sendFrame = (base64Jpeg) => {
-    if (!base64Jpeg) return;
-
-    const fingerprint = getFrameFingerprint(base64Jpeg);
-
-    // Skip if image is almost identical to last sent frame
-    if (fingerprint === lastFrameFingerprint) {
+    if (!apiKey) {
+      onError?.("Gemini API key belum di-set (VITE_GEMINI_API_KEY).");
       return;
     }
 
-    lastFrameFingerprint = fingerprint;
-    pendingFrame = base64Jpeg;
+    const url = `${WS_BASE}?key=${encodeURIComponent(apiKey)}`;
+    console.info("[GeminiLive] Connecting to", url);
+
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      // Initial setup message (BidiGenerateContentSetup)
+      const setupMessage = {
+        setup: {
+          model: `models/${MODEL_ID}`,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 512,
+            responseModalities: enableAudioOutput ? ["AUDIO"] : ["TEXT"],
+          },
+          systemInstruction: systemInstruction
+            ? {
+                parts: [{ text: systemInstruction }],
+              }
+            : undefined,
+          // Enable transcription for input & output audio
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          realtimeInputConfig: {
+            automaticActivityDetection: { disabled: false },
+          },
+        },
+      };
+
+      safeSend(ws, setupMessage);
+    };
+
+    ws.onmessage = (event) => {
+      let msg;
+      try {
+        msg = JSON.parse(event.data);
+      } catch (err) {
+        console.warn("[GeminiLive] Failed to parse server message", err);
+        return;
+      }
+
+      // Setup complete → connection ready
+      if (msg.setupComplete) {
+        open = true;
+        console.info("[GeminiLive] Setup complete, session live");
+        onReady?.();
+        return;
+      }
+
+      const server = msg.serverContent;
+      if (!server) return;
+
+      // Model content (text + optional inline audio)
+      const turn = server.modelTurn;
+      if (turn?.parts) {
+        for (const part of turn.parts) {
+          if (typeof part.text === "string" && part.text.trim()) {
+            onText?.(part.text);
+          }
+          if (
+            part.inlineData &&
+            typeof part.inlineData.data === "string" &&
+            part.inlineData.mimeType?.startsWith("audio/")
+          ) {
+            onAudioChunk?.(part.inlineData.data, part.inlineData.mimeType);
+            // Approximate audio level as "speaking"
+            onAudioLevel?.(1);
+          }
+        }
+      }
+
+      // Transcripts (user & AI) dari Live API
+      if (server.inputTranscription?.text) {
+        onTranscript?.({
+          role: "user",
+          text: server.inputTranscription.text,
+        });
+      }
+      if (server.outputTranscription?.text) {
+        onTranscript?.({
+          role: "ai",
+          text: server.outputTranscription.text,
+        });
+      }
+    };
+
+    ws.onerror = (event) => {
+      console.error("[GeminiLive] WebSocket error", event);
+      onError?.(
+        "Gemini Live WebSocket error. Cek API key, quota, dan koneksi jaringan.",
+      );
+    };
+
+    ws.onclose = () => {
+      console.info("[GeminiLive] WebSocket closed");
+      open = false;
+      ws = null;
+      onClose?.();
+    };
   };
 
-  const sendAudio = () => {};
+  const disconnect = () => {
+    if (ws) {
+      try {
+        ws.close(1000, "client-close");
+      } catch (err) {
+        console.warn("[GeminiLive] close error", err);
+      }
+    }
+    ws = null;
+    open = false;
+  };
+
+  // Send single JPEG frame (base64 tanpa prefix data URL)
+  const sendFrame = (base64Jpeg) => {
+    if (!base64Jpeg) return;
+    safeSend(ws, {
+      realtimeInput: {
+        video: {
+          data: base64Jpeg,
+          mimeType: "image/jpeg",
+        },
+      },
+    });
+  };
+
+  // Send audio chunk (PCM 16kHz, base64)
+  const sendAudio = (base64Pcm) => {
+    if (!base64Pcm) return;
+    safeSend(ws, {
+      realtimeInput: {
+        audio: {
+          data: base64Pcm,
+          mimeType: "audio/pcm;rate=16000",
+        },
+      },
+    });
+  };
+
+  // Send text streaming
   const sendText = (text) => {
-    pendingText = text;
+    const trimmed = text?.trim();
+    if (!trimmed) return;
+    safeSend(ws, {
+      realtimeInput: {
+        text: trimmed,
+      },
+    });
   };
 
-  return { connect, disconnect, sendFrame, sendAudio, sendText, isOpen };
+  const isOpen = () => !!ws && ws.readyState === WebSocket.OPEN && open;
+
+  return {
+    connect,
+    disconnect,
+    sendFrame,
+    sendAudio,
+    sendText,
+    isOpen,
+  };
 }

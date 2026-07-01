@@ -91,6 +91,7 @@ export function useGeminiLive() {
   const [detectionResult, setDetectionResult] = useState(null);
   const [error, setError] = useState(null);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [transcript, setTranscript] = useState([]); // [{ role, text, ts }]
 
   const clientRef = useRef(null);
   const pendingFrameRef = useRef(null);
@@ -148,6 +149,17 @@ export function useGeminiLive() {
     }, 300);
   }, []);
 
+  // ── Handle transcript dari Gemini Live ─────────────────────────────────────
+  const handleTranscript = useCallback((entry) => {
+    if (!entry || !entry.text?.trim()) return;
+
+    const ts = Date.now();
+    const role = entry.role === "user" ? "user" : "ai";
+
+    setTranscript((prev) => [...prev, { role, text: entry.text, ts }]);
+    setMessages((prev) => [...prev, { role, text: entry.text, ts }]);
+  }, []);
+
   // ── Frame dispatch loop (every 2.5s) ──────────────────────────────────────
   const startFrameLoop = useCallback(() => {
     // FIX BUG 4: prevent double interval if onReady fires more than once
@@ -193,6 +205,7 @@ export function useGeminiLive() {
     setMessages([]);
     setDetectionResult(null);
     setCaption("");
+    setTranscript([]);
 
     // FIX BUG 5: clear accumulated text on new session start
     accumulatedTextRef.current = "";
@@ -205,6 +218,7 @@ export function useGeminiLive() {
       systemInstruction: SYSTEM_PROMPT,
       enableAudioOutput: false, // Use Web Speech TTS (id-ID) instead of Gemini audio
       onText: handleTextChunk,
+      onTranscript: handleTranscript,
       onReady: () => {
         setStatus("live");
         startFrameLoop();
@@ -226,7 +240,7 @@ export function useGeminiLive() {
 
     clientRef.current = client;
     client.connect();
-  }, [handleTextChunk, startFrameLoop]);
+  }, [handleTextChunk, handleTranscript, startFrameLoop]);
 
   // ── Stop session ───────────────────────────────────────────────────────────
   const stopSession = useCallback(() => {
@@ -234,7 +248,6 @@ export function useGeminiLive() {
     frameTimerRef.current = null;
     frameLoopActiveRef.current = false;
 
-    // FIX BUG 6: null the ref after clearing so re-arm logic works cleanly
     clearTimeout(flushTimerRef.current);
     flushTimerRef.current = null;
 
@@ -244,7 +257,6 @@ export function useGeminiLive() {
 
     isBusyRef.current = false;
     pendingFrameRef.current = null;
-    // FIX BUG 5: clear stale accumulated text so it can't bleed into next session
     accumulatedTextRef.current = "";
 
     setStatus("idle");
@@ -266,15 +278,32 @@ export function useGeminiLive() {
     if (!text.trim() || !clientRef.current?.isOpen()) return;
 
     setMessages((prev) => [...prev, { role: "user", text, ts: Date.now() }]);
-
-    // FIX BUG 3: Do NOT set isBusyRef here for the WebSocket path.
-    // On WS, the response arrives via onText callbacks → handleTextChunk →
-    // flush timer, which already resets isBusyRef.  Setting it here caused a
-    // permanent deadlock: the frame loop saw busy=true and never sent another
-    // frame after even a single text message.
-    // isBusyRef is only meaningful for the frame loop, not for text messages.
     clientRef.current.sendText(text);
   }, []);
+
+  const downloadTranscript = useCallback(() => {
+    if (!transcript.length) return;
+
+    const lines = transcript
+      .map(
+        (m) => `${m.role === "user" ? "Kamu" : "UPTERRA AI"}: ${m.text}`,
+      )
+      .join("\n");
+
+    const blob = new Blob([lines], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `upterra-gemini-session-${new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [transcript]);
 
   // Cleanup on unmount
   useEffect(() => () => stopSession(), [stopSession]);
@@ -289,10 +318,12 @@ export function useGeminiLive() {
     detectionResult,
     error,
     audioLevel,
+    transcript,
     startSession,
     stopSession,
     sendVideoFrame,
     sendAudioChunk,
     sendTextMessage,
+    downloadTranscript,
   };
 }
