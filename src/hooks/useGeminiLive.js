@@ -31,19 +31,39 @@ function parseDetection(rawText) {
   return { detectionResult: null, cleanText: rawText };
 }
 
-function base64ToArrayBuffer(base64) {
+function base64ToFloat32(base64, sourceSampleRate, targetSampleRate) {
+  // Decode base64 → Int16 PCM → Float32
   const bin = atob(base64);
-  const buf = new ArrayBuffer(bin.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
-  return buf;
+  const int16 = new Int16Array(bin.length / 2);
+  for (let i = 0; i < int16.length; i++) {
+    int16[i] = (bin.charCodeAt(i * 2)) | (bin.charCodeAt(i * 2 + 1) << 8);
+  }
+
+  // Resample jika perlu (linear interpolation)
+  if (sourceSampleRate === targetSampleRate) {
+    const f32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768.0;
+    return f32;
+  }
+
+  const ratio = sourceSampleRate / targetSampleRate;
+  const outLen = Math.round(int16.length / ratio);
+  const f32 = new Float32Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const srcIdx = i * ratio;
+    const lo = Math.floor(srcIdx);
+    const hi = Math.min(lo + 1, int16.length - 1);
+    const t = srcIdx - lo;
+    f32[i] = ((1 - t) * int16[lo] + t * int16[hi]) / 32768.0;
+  }
+  return f32;
 }
 
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return window.btoa(binary);
+  let bin = "";
+  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+  return window.btoa(bin);
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -67,19 +87,22 @@ export function useGeminiLive() {
   const flushTimerRef = useRef(null);
   const frameLoopActiveRef = useRef(false);
 
-  // Audio playback refs
+  // ── Playback refs ─────────────────────────────────────────────────────────
+  // Satu AudioContext shared selama session — tidak pernah ditutup antar chunk
   const playbackCtxRef = useRef(null);
-  const nextPlayTimeRef = useRef(0);  // schedule chunks back-to-back
-  const isSpeakingRef = useRef(false);
+  const nextPlayTimeRef = useRef(0);
   const speakEndTimerRef = useRef(null);
+  const isAISpeakingRef = useRef(false);  // ref version untuk callback
 
-  // Mic refs
+  // ── Mic refs ──────────────────────────────────────────────────────────────
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
   const micSourceRef = useRef(null);
   const micStreamRef = useRef(null);
+  const isMicConnectedRef = useRef(false); // apakah source→worklet tersambung
+  const micUnmuteTimerRef = useRef(null);
 
-  // Pre-load TTS voices (fallback path)
+  // Pre-load TTS voices
   useEffect(() => {
     if (window.speechSynthesis) {
       window.speechSynthesis.getVoices();
@@ -87,73 +110,92 @@ export function useGeminiLive() {
     }
   }, []);
 
-  // ── PCM audio player ──────────────────────────────────────────────────
-  // Gemini kirim audio/pcm;rate=24000 (signed int16 little-endian, mono)
-  // Kita decode manual: base64 -> ArrayBuffer -> Int16 -> Float32 -> AudioBuffer -> play
+  // ── Mic mute/unmute (disconnect worklet input to stop sending to Gemini) ──
+  const muteMic = useCallback(() => {
+    if (!isMicConnectedRef.current) return;
+    try {
+      micSourceRef.current?.disconnect(workletNodeRef.current);
+    } catch {}
+    isMicConnectedRef.current = false;
+  }, []);
+
+  const unmuteMic = useCallback(() => {
+    if (isMicConnectedRef.current) return;
+    if (!micSourceRef.current || !workletNodeRef.current) return;
+    try {
+      micSourceRef.current.connect(workletNodeRef.current);
+      isMicConnectedRef.current = true;
+    } catch {}
+  }, []);
+
+  // ── PCM audio player ──────────────────────────────────────────────────────
+  // Decode base64 PCM int16 → Float32 → schedule ke AudioContext
+  // Mute mic selama AI bicara untuk cegah echo loop.
   const playAudioChunk = useCallback((base64pcm, sampleRate = 24000) => {
     try {
-      // Buat/reuse AudioContext untuk playback
+      // Buat AudioContext SEKALI saat session start, reuse untuk semua chunk
       if (!playbackCtxRef.current || playbackCtxRef.current.state === "closed") {
-        playbackCtxRef.current = new AudioContext({ sampleRate });
+        // Gunakan default sampleRate browser (biasanya 44100/48000);
+        // kita akan resample manual dari 24000 ke ctx.sampleRate
+        playbackCtxRef.current = new AudioContext();
         nextPlayTimeRef.current = 0;
       }
       const ctx = playbackCtxRef.current;
       if (ctx.state === "suspended") ctx.resume();
 
-      // Decode base64 -> raw bytes
-      const rawBuf = base64ToArrayBuffer(base64pcm);
-      // PCM int16 little-endian -> Float32
-      const int16 = new Int16Array(rawBuf);
-      const float32 = new Float32Array(int16.length);
-      for (let i = 0; i < int16.length; i++) {
-        float32[i] = int16[i] / 32768.0;
-      }
+      // Mute mic saat AI mulai bicara → cegah echo
+      muteMic();
+      clearTimeout(micUnmuteTimerRef.current);
 
-      // Buat AudioBuffer
-      const audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
+      // Decode & resample ke ctx.sampleRate
+      const float32 = base64ToFloat32(base64pcm, sampleRate, ctx.sampleRate);
+
+      const audioBuffer = ctx.createBuffer(1, float32.length, ctx.sampleRate);
       audioBuffer.copyToChannel(float32, 0);
 
-      // Schedule playback tepat setelah chunk sebelumnya selesai
-      const startTime = Math.max(ctx.currentTime, nextPlayTimeRef.current);
-      nextPlayTimeRef.current = startTime + audioBuffer.duration;
+      // Schedule langsung setelah chunk sebelumnya — tidak ada gap
+      const startAt = Math.max(ctx.currentTime + 0.01, nextPlayTimeRef.current);
+      nextPlayTimeRef.current = startAt + audioBuffer.duration;
 
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
-      source.start(startTime);
+      source.start(startAt);
 
-      // Track isAISpeaking
-      if (!isSpeakingRef.current) {
-        isSpeakingRef.current = true;
+      // Update speaking state
+      if (!isAISpeakingRef.current) {
+        isAISpeakingRef.current = true;
         setIsAISpeaking(true);
       }
+
+      // Reset end timer: tunggu sampai semua chunk selesai diputar + 600ms buffer
       clearTimeout(speakEndTimerRef.current);
-      // Kalau tidak ada chunk baru dalam 500ms setelah schedule selesai,
-      // anggap AI selesai bicara
-      const msUntilEnd = (nextPlayTimeRef.current - ctx.currentTime) * 1000;
+      const msUntilDone = (nextPlayTimeRef.current - ctx.currentTime) * 1000;
       speakEndTimerRef.current = setTimeout(() => {
-        isSpeakingRef.current = false;
+        isAISpeakingRef.current = false;
         setIsAISpeaking(false);
         isBusyRef.current = false;
         setTimeout(() => setCaption(""), 3000);
-      }, msUntilEnd + 500);
+        // Unmute mic setelah AI selesai bicara + 600ms extra buffer
+        micUnmuteTimerRef.current = setTimeout(() => unmuteMic(), 600);
+      }, msUntilDone + 300);
 
     } catch (err) {
       console.warn("[GeminiLive] playAudioChunk error:", err);
     }
-  }, []);
+  }, [muteMic, unmuteMic]);
 
   const stopPlayback = useCallback(() => {
     clearTimeout(speakEndTimerRef.current);
+    clearTimeout(micUnmuteTimerRef.current);
     try { playbackCtxRef.current?.close(); } catch {}
     playbackCtxRef.current = null;
     nextPlayTimeRef.current = 0;
-    isSpeakingRef.current = false;
+    isAISpeakingRef.current = false;
     setIsAISpeaking(false);
   }, []);
 
-  // ── flushAiText: update UI caption/messages + transcript ─────────────────
-  // Audio sudah diputar via playAudioChunk; ini hanya untuk UI teks.
+  // ── flushAiText: update UI teks (audio sudah diputar sendiri) ─────────────
   const flushAiText = useCallback((raw) => {
     const text = raw.trim();
     if (!text) return;
@@ -165,7 +207,7 @@ export function useGeminiLive() {
     setTranscript((prev) => [...prev, { role: "ai", text: display, ts: Date.now() }]);
   }, []);
 
-  // ── onText: fallback TEXT mode (responseModalities=["TEXT"]) ────────────
+  // ── onText: TEXT mode fallback ────────────────────────────────────────────
   const handleTextChunk = useCallback((chunk) => {
     accumulatedAiTextRef.current += chunk;
     clearTimeout(flushTimerRef.current);
@@ -174,7 +216,7 @@ export function useGeminiLive() {
       accumulatedAiTextRef.current = "";
       isBusyRef.current = false;
       flushAiText(raw);
-      // TEXT mode: gunakan browser TTS karena tidak ada audio dari Gemini
+      // TEXT mode: browser TTS karena tidak ada audio dari Gemini
       const { cleanText } = parseDetection(raw.trim());
       const display = cleanText || raw.trim();
       if (display && window.speechSynthesis) {
@@ -191,19 +233,15 @@ export function useGeminiLive() {
     }, 300);
   }, [flushAiText]);
 
-  // ── onTranscript: AUDIO mode (primary) ───────────────────────────────
-  // outputTranscription datang bersamaan dengan audio chunks.
-  // Kita accumulate teks untuk UI; audio sudah diputar oleh playAudioChunk.
+  // ── onTranscript: AUDIO mode — teks dari outputTranscription ─────────────
   const handleTranscript = useCallback((entry) => {
     if (!entry || !entry.text?.trim()) return;
-
     if (entry.role === "user") {
       setTranscript((prev) => [...prev, { role: "user", text: entry.text, ts: Date.now() }]);
       setMessages((prev) => [...prev, { role: "user", text: entry.text, ts: Date.now() }]);
       return;
     }
-
-    // AI transcript → accumulate → flush UI (audio sudah diputar sendiri)
+    // AI transcript → accumulate → flush UI saja (audio diputar di playAudioChunk)
     accumulatedAiTextRef.current += entry.text;
     clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(() => {
@@ -213,8 +251,9 @@ export function useGeminiLive() {
     }, 300);
   }, [flushAiText]);
 
-  // ── Stop mic ─────────────────────────────────────────────────────────────
+  // ── Stop mic ──────────────────────────────────────────────────────────────
   const stopMicStream = useCallback(() => {
+    clearTimeout(micUnmuteTimerRef.current);
     try { workletNodeRef.current?.disconnect(); } catch {}
     try { micSourceRef.current?.disconnect(); } catch {}
     try { audioCtxRef.current?.close(); } catch {}
@@ -223,29 +262,45 @@ export function useGeminiLive() {
     micSourceRef.current = null;
     audioCtxRef.current = null;
     micStreamRef.current = null;
+    isMicConnectedRef.current = false;
   }, []);
 
-  // ── Start mic (AudioWorklet → PCM16 → sendAudio) ──────────────────────
+  // ── Start mic (AudioWorklet → PCM16 → sendAudio) ──────────────────────────
   const startMicStream = useCallback(async () => {
     if (!clientRef.current?.isOpen()) return;
     try {
       const micStream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
         video: false,
       });
       micStreamRef.current = micStream;
+
       const audioCtx = new AudioContext({ sampleRate: 16000 });
       audioCtxRef.current = audioCtx;
+
       await audioCtx.audioWorklet.addModule("/pcm-processor.js");
+
       const source = audioCtx.createMediaStreamSource(micStream);
       micSourceRef.current = source;
+
       const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor");
       workletNodeRef.current = workletNode;
+
       workletNode.port.onmessage = (evt) => {
         if (!clientRef.current?.isOpen()) return;
         clientRef.current.sendAudio(arrayBufferToBase64(evt.data));
       };
+
+      // Sambungkan source → worklet (mulai kirim audio)
       source.connect(workletNode);
+      isMicConnectedRef.current = true;
+
       console.info("[GeminiLive] Mic stream started ✅");
     } catch (err) {
       console.warn("[GeminiLive] startMicStream failed:", err);
@@ -297,7 +352,7 @@ export function useGeminiLive() {
       systemInstruction: SYSTEM_PROMPT,
       onText: handleTextChunk,
       onTranscript: handleTranscript,
-      onAudioChunk: (b64, _mime, sampleRate) => playAudioChunk(b64, sampleRate),
+      onAudioChunk: (b64, _mime, sr) => playAudioChunk(b64, sr),
       onReady: () => {
         setStatus("live");
         startFrameLoop();
@@ -345,8 +400,8 @@ export function useGeminiLive() {
     setAudioLevel(0);
   }, [stopMicStream, stopPlayback]);
 
-  const sendVideoFrame = useCallback((base64Jpeg) => { pendingFrameRef.current = base64Jpeg; }, []);
-  const sendAudioChunk = useCallback((base64Pcm) => { clientRef.current?.sendAudio(base64Pcm); }, []);
+  const sendVideoFrame = useCallback((b64) => { pendingFrameRef.current = b64; }, []);
+  const sendAudioChunk = useCallback((b64) => { clientRef.current?.sendAudio(b64); }, []);
   const sendTextMessage = useCallback((text) => {
     if (!text.trim() || !clientRef.current?.isOpen()) return;
     setMessages((prev) => [...prev, { role: "user", text, ts: Date.now() }]);
