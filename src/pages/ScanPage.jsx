@@ -28,6 +28,7 @@ function getSupportedAudioMimeType() {
 export default function ScanPage() {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const resultPanelRef = useRef(null);
   const [mode, setMode] = useState("video"); // 'video' | 'voice'
   const [cameraActive, setCameraActive] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
@@ -275,6 +276,15 @@ export default function ScanPage() {
 
   const lastAiMsg = [...messages].reverse().find((m) => m.role === "ai");
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+
+  // Keep the panel height capped and auto-scroll to the newest line
+  // instead of letting it grow taller (and creep upward over the camera
+  // view) every time a message has more words.
+  useEffect(() => {
+    const el = resultPanelRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [lastAiMsg?.text, lastUserMsg?.text, detectionResult, error]);
 
   const statusLabel =
     status === "connecting"
@@ -548,7 +558,7 @@ export default function ScanPage() {
             </form>
 
             {(detectionResult || lastAiMsg || error || sessionRecordingUrl) && (
-              <div className="sp-result-panel">
+              <div className="sp-result-panel" ref={resultPanelRef}>
                 {error && (
                   <div className="sp-error">
                     {typeof error === "string"
