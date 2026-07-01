@@ -27,7 +27,7 @@ export default function MarketDetail() {
   const addOrder = useOrderStore((s) => s.addOrder);
 
   const [selectedVariant, setSelectedVariant] = useState(
-    product ? product.variants[0] : null
+    product ? product.variants[0] : null,
   );
   const [quantity, setQuantity] = useState(1);
   const [showSheet, setShowSheet] = useState(false);
@@ -61,7 +61,7 @@ export default function MarketDetail() {
   const handleBuyNow = () => {
     addOrder(
       [{ ...product, variantLabel: selectedVariant.label, quantity }],
-      product.price * quantity
+      product.price * quantity,
     );
     setShowSheet(false);
     navigate("/pesanan");
@@ -154,10 +154,16 @@ export default function MarketDetail() {
           {product.rating && (
             <div className="mt-2 flex items-center gap-2">
               <span className="text-yellow-400 text-[13px]">★</span>
-              <span className="text-[12px] font-semibold text-[#444]">{product.rating}</span>
-              <span className="text-[12px] text-[#888]">({product.sold && Math.ceil(product.sold / 2)})</span>
+              <span className="text-[12px] font-semibold text-[#444]">
+                {product.rating}
+              </span>
+              <span className="text-[12px] text-[#888]">
+                ({product.sold && Math.ceil(product.sold / 2)})
+              </span>
               <span className="text-[#ccc]">|</span>
-              <span className="text-[12px] text-[#888]">{product.sold} terjual</span>
+              <span className="text-[12px] text-[#888]">
+                {product.sold} terjual
+              </span>
               <button
                 className="ml-auto"
                 aria-label="Simpan"
@@ -165,7 +171,11 @@ export default function MarketDetail() {
               >
                 <Bookmark
                   size={18}
-                  className={isBookmarked ? "fill-[#3da85e] text-[#3da85e]" : "text-[#aaa]"}
+                  className={
+                    isBookmarked
+                      ? "fill-[#3da85e] text-[#3da85e]"
+                      : "text-[#aaa]"
+                  }
                 />
               </button>
             </div>
@@ -206,8 +216,10 @@ export default function MarketDetail() {
 
           {/* Delivery */}
           <div className="mt-4 flex items-center gap-2 rounded-[12px] bg-[#f8f8f8] px-4 py-3">
-            <span className="text-[12px] text-[#3da85e]">🚚</span>
-            <span className="text-[12px] text-[#555]">akan sampai pada 3 - 5 Juni</span>
+            <span className="text-[12px] text-[#3da85e]"></span>
+            <span className="text-[12px] text-[#555]">
+              akan sampai pada 3 - 5 Juni
+            </span>
           </div>
 
           {/* Toko & Obrolan — Obrolan now navigates to chat */}
@@ -275,7 +287,9 @@ export default function MarketDetail() {
             </div>
 
             {/* Variant Picker */}
-            <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">Pilih Varian</p>
+            <p className="text-[12px] font-semibold text-[#2d2d2d] mb-2">
+              Pilih Varian
+            </p>
             <div className="flex gap-2 mb-5">
               {product.variants.map((v) => (
                 <button
@@ -298,7 +312,9 @@ export default function MarketDetail() {
 
             {/* Quantity */}
             <div className="flex items-center justify-between mb-6">
-              <p className="text-[13px] font-semibold text-[#2d2d2d]">Kuantitas</p>
+              <p className="text-[13px] font-semibold text-[#2d2d2d]">
+                Kuantitas
+              </p>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
