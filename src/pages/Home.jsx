@@ -149,7 +149,8 @@ export default function Home() {
               penanganan awal
             </p>
             <button
-              className="mt-5 inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-[#1f7a3d]"
+              onClick={() => navigate("/scan")}
+              className="mt-5 inline-flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-[#1f7a3d] transition-opacity active:opacity-70"
               style={{
                 background: "rgba(255,255,255,0.90)",
                 boxShadow:
