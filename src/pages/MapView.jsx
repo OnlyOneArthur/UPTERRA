@@ -112,8 +112,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Sidakarya",
-    lat: -8.7210,
-    lng: 115.2180,
+    lat: -8.721,
+    lng: 115.218,
   },
   {
     id: "desa-2",
@@ -124,8 +124,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Pemogan",
-    lat: -8.7320,
-    lng: 115.2050,
+    lat: -8.732,
+    lng: 115.205,
   },
   {
     id: "desa-3",
@@ -136,8 +136,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Ubung Kaja",
-    lat: -8.6250,
-    lng: 115.2070,
+    lat: -8.625,
+    lng: 115.207,
   },
   {
     id: "desa-4",
@@ -148,8 +148,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Sanur Kaja",
-    lat: -8.6920,
-    lng: 115.2650,
+    lat: -8.692,
+    lng: 115.265,
   },
   {
     id: "desa-5",
@@ -160,8 +160,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Renon",
-    lat: -8.6870,
-    lng: 115.2340,
+    lat: -8.687,
+    lng: 115.234,
   },
   {
     id: "desa-6",
@@ -172,8 +172,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Dauh Puri",
-    lat: -8.6630,
-    lng: 115.2100,
+    lat: -8.663,
+    lng: 115.21,
   },
   {
     id: "desa-7",
@@ -184,8 +184,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Tonja",
-    lat: -8.6450,
-    lng: 115.2280,
+    lat: -8.645,
+    lng: 115.228,
   },
   {
     id: "desa-8",
@@ -196,8 +196,8 @@ const tpsDesaPoints = [
     badge: "TPS Desa",
     badgeColor: "#7c3aed",
     desc: "Tempat pembuangan sampah resmi Desa Kesiman",
-    lat: -8.6710,
-    lng: 115.2450,
+    lat: -8.671,
+    lng: 115.245,
   },
 ];
 
@@ -213,8 +213,8 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Tumpukan sampah campuran di pinggir jalan",
-    lat: -8.6710,
-    lng: 115.2390,
+    lat: -8.671,
+    lng: 115.239,
     isReport: true,
     isPreloaded: true,
   },
@@ -227,8 +227,8 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Pembuangan sampah ilegal di bantaran sungai",
-    lat: -8.6760,
-    lng: 115.2050,
+    lat: -8.676,
+    lng: 115.205,
     isReport: true,
     isPreloaded: true,
   },
@@ -241,8 +241,8 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Tumpukan sampah organik & anorganik di lahan kosong",
-    lat: -8.6380,
-    lng: 115.2010,
+    lat: -8.638,
+    lng: 115.201,
     isReport: true,
     isPreloaded: true,
   },
@@ -255,7 +255,7 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Sisa sampah pasar yang tidak terangkut",
-    lat: -8.6620,
+    lat: -8.662,
     lng: 115.2158,
     isReport: true,
     isPreloaded: true,
@@ -269,8 +269,8 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Pembuangan sampah elektronik & plastik sembarangan",
-    lat: -8.7050,
-    lng: 115.1720,
+    lat: -8.705,
+    lng: 115.172,
     isReport: true,
     isPreloaded: true,
   },
@@ -283,8 +283,8 @@ const preloadedIllegalDumps = [
     badge: "Sampah Liar",
     badgeColor: "#e03535",
     desc: "Sampah plastik dan organik di area pantai",
-    lat: -8.6950,
-    lng: 115.2630,
+    lat: -8.695,
+    lng: 115.263,
     isReport: true,
     isPreloaded: true,
   },
@@ -415,7 +415,7 @@ export default function MapView() {
       tpsDesaPoints.forEach((point) => {
         const desaIcon = L.divIcon({
           className: "",
-          html: `<div style="width:34px;height:34px;background:#7c3aed;border:3px solid white;border-radius:8px;box-shadow:0 4px 12px rgba(124,58,237,0.35);display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;">🗑️</span></div>`,
+          html: `<div style="width:34px;height:34px;background:#7c3aed;border:3px solid white;border-radius:8px;box-shadow:0 4px 12px rgba(124,58,237,0.35);display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;"></span></div>`,
           iconSize: [34, 34],
           iconAnchor: [17, 34],
           popupAnchor: [0, -38],
@@ -485,10 +485,7 @@ export default function MapView() {
       }
     });
     if (selectedPoint && !selectedPoint.isReport) {
-      if (
-        activeFilter !== "semua" &&
-        selectedPoint.type !== activeFilter
-      ) {
+      if (activeFilter !== "semua" && selectedPoint.type !== activeFilter) {
         setSelectedPoint(null);
       }
     }
@@ -499,15 +496,17 @@ export default function MapView() {
     if (!mapInstanceRef.current || !window.L) return;
     const L = window.L;
     // Remove only user-added (non-preloaded) markers
-    reportMarkersRef.current = reportMarkersRef.current.filter(({ id, marker }) => {
-      const isPreloaded = preloadedIllegalDumps.some((p) => p.id === id);
-      if (!isPreloaded) {
-        if (mapInstanceRef.current.hasLayer(marker))
-          mapInstanceRef.current.removeLayer(marker);
-        return false;
-      }
-      return true;
-    });
+    reportMarkersRef.current = reportMarkersRef.current.filter(
+      ({ id, marker }) => {
+        const isPreloaded = preloadedIllegalDumps.some((p) => p.id === id);
+        if (!isPreloaded) {
+          if (mapInstanceRef.current.hasLayer(marker))
+            mapInstanceRef.current.removeLayer(marker);
+          return false;
+        }
+        return true;
+      },
+    );
 
     // Toggle visibility of all report markers based on filter
     reportMarkersRef.current.forEach(({ marker }) => {
@@ -627,10 +626,10 @@ export default function MapView() {
   const listItems = isLaporanFilter
     ? filteredReports
     : isTpsDesaFilter
-    ? filteredTpsDesa
-    : activeFilter === "semua"
-    ? [...filtered, ...filteredTpsDesa]
-    : filtered;
+      ? filteredTpsDesa
+      : activeFilter === "semua"
+        ? [...filtered, ...filteredTpsDesa]
+        : filtered;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-poppins">
@@ -884,19 +883,21 @@ export default function MapView() {
               {activeFilter === "semua"
                 ? "Semua Titik di Peta"
                 : activeFilter === "laporan"
-                ? "Titik Sampah Sembarangan"
-                : activeFilter === "tpsdesa"
-                ? "TPS Resmi Per Desa"
-                : filters.find((f) => f.key === activeFilter)?.label}
+                  ? "Titik Sampah Sembarangan"
+                  : activeFilter === "tpsdesa"
+                    ? "TPS Resmi Per Desa"
+                    : filters.find((f) => f.key === activeFilter)?.label}
               <span className="ml-1.5 text-[11px] font-normal text-[#aaa]">
                 (
                 {activeFilter === "laporan"
                   ? filteredReports.length
                   : activeFilter === "tpsdesa"
-                  ? filteredTpsDesa.length
-                  : activeFilter === "semua"
-                  ? filtered.length + filteredTpsDesa.length + filteredReports.length
-                  : filtered.length}
+                    ? filteredTpsDesa.length
+                    : activeFilter === "semua"
+                      ? filtered.length +
+                        filteredTpsDesa.length +
+                        filteredReports.length
+                      : filtered.length}
                 )
               </span>
             </p>
@@ -988,7 +989,8 @@ export default function MapView() {
                   </button>
                 ))
               )
-            ) : filtered.length === 0 && (activeFilter !== "semua" || filteredTpsDesa.length === 0) ? (
+            ) : filtered.length === 0 &&
+              (activeFilter !== "semua" || filteredTpsDesa.length === 0) ? (
               <div className="flex flex-col items-center justify-center pt-8 text-center">
                 <MapPin size={28} className="text-[#ccc]" />
                 <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
@@ -996,13 +998,18 @@ export default function MapView() {
                 </p>
               </div>
             ) : (
-              [...filtered, ...(activeFilter === "semua" ? filteredTpsDesa : [])].map((point) => (
+              [
+                ...filtered,
+                ...(activeFilter === "semua" ? filteredTpsDesa : []),
+              ].map((point) => (
                 <button
                   key={point.id}
                   onClick={() => flyToPoint(point)}
                   className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
                     selectedPoint?.id === point.id
-                      ? point.type === "tpsdesa" ? "bg-[#f3eeff]" : "bg-[#f0faf3]"
+                      ? point.type === "tpsdesa"
+                        ? "bg-[#f3eeff]"
+                        : "bg-[#f0faf3]"
                       : "bg-[#fafafa] active:bg-[#f0f0f0]"
                   }`}
                 >
