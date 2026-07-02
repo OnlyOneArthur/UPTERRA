@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   AlertTriangle,
   Camera,
+  Trash2,
 } from "lucide-react";
 import BottomNav from "../components/layout/BottomNav";
 
@@ -100,12 +101,202 @@ const dropPoints = [
   },
 ];
 
+// ─── Titik Pembuangan Sampah Resmi Per Desa (TPS Desa) ───────────────────────
+const tpsDesaPoints = [
+  {
+    id: "desa-1",
+    name: "TPS Desa Sidakarya",
+    address: "Desa Sidakarya, Denpasar Selatan",
+    meta: "Buka: 06.00 - 18.00 | Kapasitas: 5 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Sidakarya",
+    lat: -8.7210,
+    lng: 115.2180,
+  },
+  {
+    id: "desa-2",
+    name: "TPS Desa Pemogan",
+    address: "Desa Pemogan, Denpasar Selatan",
+    meta: "Buka: 05.00 - 17.00 | Kapasitas: 4 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Pemogan",
+    lat: -8.7320,
+    lng: 115.2050,
+  },
+  {
+    id: "desa-3",
+    name: "TPS Desa Ubung Kaja",
+    address: "Desa Ubung Kaja, Denpasar Utara",
+    meta: "Buka: 06.00 - 18.00 | Kapasitas: 6 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Ubung Kaja",
+    lat: -8.6250,
+    lng: 115.2070,
+  },
+  {
+    id: "desa-4",
+    name: "TPS Desa Sanur Kaja",
+    address: "Desa Sanur Kaja, Denpasar Selatan",
+    meta: "Buka: 06.00 - 16.00 | Kapasitas: 3 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Sanur Kaja",
+    lat: -8.6920,
+    lng: 115.2650,
+  },
+  {
+    id: "desa-5",
+    name: "TPS Desa Renon",
+    address: "Desa Renon, Denpasar Selatan",
+    meta: "Buka: 05.30 - 17.30 | Kapasitas: 5 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Renon",
+    lat: -8.6870,
+    lng: 115.2340,
+  },
+  {
+    id: "desa-6",
+    name: "TPS Desa Dauh Puri",
+    address: "Desa Dauh Puri, Denpasar Barat",
+    meta: "Buka: 06.00 - 18.00 | Kapasitas: 4 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Dauh Puri",
+    lat: -8.6630,
+    lng: 115.2100,
+  },
+  {
+    id: "desa-7",
+    name: "TPS Desa Tonja",
+    address: "Desa Tonja, Denpasar Utara",
+    meta: "Buka: 06.00 - 17.00 | Kapasitas: 3.5 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Tonja",
+    lat: -8.6450,
+    lng: 115.2280,
+  },
+  {
+    id: "desa-8",
+    name: "TPS Desa Kesiman",
+    address: "Desa Kesiman, Denpasar Timur",
+    meta: "Buka: 05.00 - 17.00 | Kapasitas: 4 ton/hari",
+    type: "tpsdesa",
+    badge: "TPS Desa",
+    badgeColor: "#7c3aed",
+    desc: "Tempat pembuangan sampah resmi Desa Kesiman",
+    lat: -8.6710,
+    lng: 115.2450,
+  },
+];
+
+// ─── Titik Sampah Sembarangan Pre-loaded ─────────────────────────────────────
+// Data awal sampah liar yang sudah diketahui (sebelum laporan warga)
+const preloadedIllegalDumps = [
+  {
+    id: "illegal-1",
+    name: "Sampah Liar — Jl. Ahmad Yani",
+    address: "Jl. Ahmad Yani, Denpasar Timur",
+    meta: "Dilaporkan: 28 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Tumpukan sampah campuran di pinggir jalan",
+    lat: -8.6710,
+    lng: 115.2390,
+    isReport: true,
+    isPreloaded: true,
+  },
+  {
+    id: "illegal-2",
+    name: "Sampah Liar — Sungai Badung",
+    address: "Bantaran Sungai Badung, Denpasar Barat",
+    meta: "Dilaporkan: 25 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Pembuangan sampah ilegal di bantaran sungai",
+    lat: -8.6760,
+    lng: 115.2050,
+    isReport: true,
+    isPreloaded: true,
+  },
+  {
+    id: "illegal-3",
+    name: "Sampah Liar — Lahan Kosong Ubung",
+    address: "Lahan Kosong Jl. Cokroaminoto, Ubung",
+    meta: "Dilaporkan: 22 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Tumpukan sampah organik & anorganik di lahan kosong",
+    lat: -8.6380,
+    lng: 115.2010,
+    isReport: true,
+    isPreloaded: true,
+  },
+  {
+    id: "illegal-4",
+    name: "Sampah Liar — Pasar Kumbasari",
+    address: "Sekitar Pasar Kumbasari, Denpasar",
+    meta: "Dilaporkan: 20 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Sisa sampah pasar yang tidak terangkut",
+    lat: -8.6620,
+    lng: 115.2158,
+    isReport: true,
+    isPreloaded: true,
+  },
+  {
+    id: "illegal-5",
+    name: "Sampah Liar — Jl. Sunset Road",
+    address: "Jl. Sunset Road, Kuta Utara",
+    meta: "Dilaporkan: 18 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Pembuangan sampah elektronik & plastik sembarangan",
+    lat: -8.7050,
+    lng: 115.1720,
+    isReport: true,
+    isPreloaded: true,
+  },
+  {
+    id: "illegal-6",
+    name: "Sampah Liar — Pantai Sanur Utara",
+    address: "Pantai Sanur bagian Utara",
+    meta: "Dilaporkan: 15 Jun 2026",
+    type: "laporan",
+    badge: "Sampah Liar",
+    badgeColor: "#e03535",
+    desc: "Sampah plastik dan organik di area pantai",
+    lat: -8.6950,
+    lng: 115.2630,
+    isReport: true,
+    isPreloaded: true,
+  },
+];
+
 const filters = [
   { key: "semua", label: "Semua", color: "#238B45" },
   { key: "tps3r", label: "TPS3R", color: "#3da85e" },
   { key: "banksampah", label: "Bank Sampah", color: "#e0963b" },
   { key: "ewaste", label: "Dropbox E-Waste", color: "#4a90d9" },
-  { key: "laporan", label: "Sampah numpuk", color: "#e03535" },
+  { key: "tpsdesa", label: "TPS Desa", color: "#7c3aed" },
+  { key: "laporan", label: "Sampah Liar", color: "#e03535" },
 ];
 
 function loadLeaflet() {
@@ -144,14 +335,15 @@ export default function MapView() {
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const reportMarkersRef = useRef([]);
+  const tpsDesaMarkersRef = useRef([]);
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [activeFilter, setActiveFilter] = useState("semua");
   const [search, setSearch] = useState("");
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  // ─── Crowdsourced illegal dump reports ───────────────────────────────────
-  const [illegalDumps, setIllegalDumps] = useState([]);
+  // ─── Crowdsourced illegal dump reports — pre-loaded + user-added ──────────
+  const [illegalDumps, setIllegalDumps] = useState(preloadedIllegalDumps);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [reportPhoto, setReportPhoto] = useState(null);
   const [reportPhotoPreview, setReportPhotoPreview] = useState(null);
@@ -161,8 +353,16 @@ export default function MapView() {
   const reportFileRef = useRef(null);
 
   const filtered = dropPoints.filter((p) => {
-    if (activeFilter === "laporan") return false;
+    if (activeFilter === "laporan" || activeFilter === "tpsdesa") return false;
     const matchType = activeFilter === "semua" || p.type === activeFilter;
+    const matchSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.address.toLowerCase().includes(search.toLowerCase());
+    return matchType && matchSearch;
+  });
+
+  const filteredTpsDesa = tpsDesaPoints.filter((p) => {
+    const matchType = activeFilter === "semua" || activeFilter === "tpsdesa";
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.address.toLowerCase().includes(search.toLowerCase());
@@ -199,6 +399,7 @@ export default function MapView() {
           popupAnchor: [0, -36],
         });
 
+      // ─── Drop points (TPS3R, Bank Sampah, E-Waste) markers
       dropPoints.forEach((point) => {
         const marker = L.marker([point.lat, point.lng], {
           icon: createIcon(point.badgeColor),
@@ -207,6 +408,44 @@ export default function MapView() {
         marker.on("click", () => {
           setSelectedPoint({ ...point, isReport: false });
           map.setView([point.lat, point.lng], 15, { animate: true });
+        });
+      });
+
+      // ─── TPS Desa markers (purple bin icon)
+      tpsDesaPoints.forEach((point) => {
+        const desaIcon = L.divIcon({
+          className: "",
+          html: `<div style="width:34px;height:34px;background:#7c3aed;border:3px solid white;border-radius:8px;box-shadow:0 4px 12px rgba(124,58,237,0.35);display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;">🗑️</span></div>`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 34],
+          popupAnchor: [0, -38],
+        });
+        const marker = L.marker([point.lat, point.lng], {
+          icon: desaIcon,
+        }).addTo(map);
+        tpsDesaMarkersRef.current.push({ id: point.id, marker, point });
+        marker.on("click", () => {
+          setSelectedPoint({ ...point, isReport: false });
+          map.setView([point.lat, point.lng], 15, { animate: true });
+        });
+      });
+
+      // ─── Pre-loaded illegal dump markers
+      preloadedIllegalDumps.forEach((report) => {
+        const reportIcon = L.divIcon({
+          className: "",
+          html: `<div style="width:32px;height:32px;background:#e03535;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(224,53,53,0.4);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:13px;">⚠</span></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -36],
+        });
+        const marker = L.marker([report.lat, report.lng], {
+          icon: reportIcon,
+        }).addTo(map);
+        reportMarkersRef.current.push({ id: report.id, marker });
+        marker.on("click", () => {
+          setSelectedPoint({ ...report, isReport: true });
+          map.setView([report.lat, report.lng], 15, { animate: true });
         });
       });
 
@@ -234,45 +473,79 @@ export default function MapView() {
           mapInstanceRef.current.removeLayer(marker);
       }
     });
+    // Sync TPS Desa markers
+    tpsDesaMarkersRef.current.forEach(({ marker }) => {
+      const visible = activeFilter === "semua" || activeFilter === "tpsdesa";
+      if (visible) {
+        if (!mapInstanceRef.current.hasLayer(marker))
+          marker.addTo(mapInstanceRef.current);
+      } else {
+        if (mapInstanceRef.current.hasLayer(marker))
+          mapInstanceRef.current.removeLayer(marker);
+      }
+    });
     if (selectedPoint && !selectedPoint.isReport) {
-      if (activeFilter !== "semua" && selectedPoint.type !== activeFilter) {
+      if (
+        activeFilter !== "semua" &&
+        selectedPoint.type !== activeFilter
+      ) {
         setSelectedPoint(null);
       }
     }
   }, [activeFilter]);
 
-  // ─── Sync illegal dump markers with state ────────────────────────────────
+  // ─── Sync illegal dump markers with state (user-added only) ──────────────
   useEffect(() => {
     if (!mapInstanceRef.current || !window.L) return;
     const L = window.L;
-    // Remove all old report markers first
-    reportMarkersRef.current.forEach(({ marker }) => {
-      if (mapInstanceRef.current.hasLayer(marker))
-        mapInstanceRef.current.removeLayer(marker);
+    // Remove only user-added (non-preloaded) markers
+    reportMarkersRef.current = reportMarkersRef.current.filter(({ id, marker }) => {
+      const isPreloaded = preloadedIllegalDumps.some((p) => p.id === id);
+      if (!isPreloaded) {
+        if (mapInstanceRef.current.hasLayer(marker))
+          mapInstanceRef.current.removeLayer(marker);
+        return false;
+      }
+      return true;
     });
-    reportMarkersRef.current = [];
+
+    // Toggle visibility of all report markers based on filter
+    reportMarkersRef.current.forEach(({ marker }) => {
+      const visible = activeFilter === "semua" || activeFilter === "laporan";
+      if (visible) {
+        if (!mapInstanceRef.current.hasLayer(marker))
+          marker.addTo(mapInstanceRef.current);
+      } else {
+        if (mapInstanceRef.current.hasLayer(marker))
+          mapInstanceRef.current.removeLayer(marker);
+      }
+    });
 
     if (activeFilter !== "laporan" && activeFilter !== "semua") return;
 
-    illegalDumps.forEach((report) => {
-      const reportIcon = L.divIcon({
-        className: "",
-        html: `<div style="width:32px;height:32px;background:#e03535;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(224,53,53,0.4);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:13px;">⚠</span></div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -36],
-      });
-      const marker = L.marker([report.lat, report.lng], {
-        icon: reportIcon,
-      }).addTo(mapInstanceRef.current);
-      reportMarkersRef.current.push({ id: report.id, marker });
-      marker.on("click", () => {
-        setSelectedPoint({ ...report, isReport: true });
-        mapInstanceRef.current.setView([report.lat, report.lng], 15, {
-          animate: true,
+    // Add newly user-added dumps (not preloaded)
+    illegalDumps
+      .filter((r) => !r.isPreloaded)
+      .filter((r) => !reportMarkersRef.current.some((m) => m.id === r.id))
+      .forEach((report) => {
+        const reportIcon = L.divIcon({
+          className: "",
+          html: `<div style="width:32px;height:32px;background:#e03535;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(224,53,53,0.4);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:13px;">⚠</span></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -36],
+        });
+        const marker = L.marker([report.lat, report.lng], {
+          icon: reportIcon,
+        }).addTo(mapInstanceRef.current);
+        reportMarkersRef.current.push({ id: report.id, marker });
+        marker.on("click", () => {
+          setSelectedPoint({ ...report, isReport: true });
+          mapInstanceRef.current.setView([report.lat, report.lng], 15, {
+            animate: true,
+          });
         });
       });
-    });
   }, [illegalDumps, activeFilter]);
 
   const flyToPoint = (point, isReport = false) => {
@@ -298,7 +571,6 @@ export default function MapView() {
         setReportGpsLoading(false);
       },
       () => {
-        // fallback to centre of Denpasar if permission denied
         setReportGps({
           lat: -8.6705,
           lng: 115.2126,
@@ -315,7 +587,7 @@ export default function MapView() {
     if (!reportPhoto || !reportGps) return;
     const newReport = {
       id: Date.now(),
-      name: `Laporan Sampah Liar #${illegalDumps.length + 1}`,
+      name: `Laporan Sampah Liar #${illegalDumps.filter((d) => !d.isPreloaded).length + 1}`,
       address: reportGps.label,
       meta: new Date().toLocaleString("id-ID", {
         hour: "2-digit",
@@ -331,15 +603,14 @@ export default function MapView() {
       lat: reportGps.lat,
       lng: reportGps.lng,
       isReport: true,
+      isPreloaded: false,
     };
     setIllegalDumps((prev) => [newReport, ...prev]);
-    // Reset form
     setReportPhoto(null);
     setReportPhotoPreview(null);
     setReportGps(null);
     setReportKategori("");
     setShowReportSheet(false);
-    // Fly to the new report pin
     setTimeout(() => flyToPoint(newReport, true), 300);
   };
 
@@ -349,6 +620,17 @@ export default function MapView() {
   const BOTTOM_TOTAL = SHEET_CONTENT_H + NAV_H;
 
   const canSubmitReport = reportPhoto && reportGps;
+
+  // Determine what to show in the bottom list
+  const isLaporanFilter = activeFilter === "laporan";
+  const isTpsDesaFilter = activeFilter === "tpsdesa";
+  const listItems = isLaporanFilter
+    ? filteredReports
+    : isTpsDesaFilter
+    ? filteredTpsDesa
+    : activeFilter === "semua"
+    ? [...filtered, ...filteredTpsDesa]
+    : filtered;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center font-poppins">
@@ -412,10 +694,10 @@ export default function MapView() {
             style={{ top: `${HEADER_H + 8}px` }}
           >
             <p className="text-[12px] font-bold text-[#2d2d2d] mb-1">
-              Titik Pengumpulan Sampah Terpilah
+              Legenda Titik di Peta
             </p>
             <p className="text-[10px] text-[#aaa] mb-3">
-              Bukan TPA — hanya fasilitas resmi & ramah warga
+              Berbagai jenis fasilitas & laporan sampah di wilayahmu
             </p>
             {[
               {
@@ -434,9 +716,14 @@ export default function MapView() {
                 desc: "Titik resmi pemerintah/swasta untuk limbah elektronik",
               },
               {
+                color: "#7c3aed",
+                label: "TPS Desa",
+                desc: "Tempat pembuangan sampah resmi tingkat desa",
+              },
+              {
                 color: "#e03535",
                 label: "Sampah Liar",
-                desc: "Laporan crowdsourcing warga — tumpukan sampah ilegal",
+                desc: "Titik sampah buang sembarangan — data awal & laporan warga",
               },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-3 mb-2">
@@ -515,6 +802,11 @@ export default function MapView() {
                       size={16}
                       style={{ color: selectedPoint.badgeColor }}
                     />
+                  ) : selectedPoint.type === "tpsdesa" ? (
+                    <Trash2
+                      size={16}
+                      style={{ color: selectedPoint.badgeColor }}
+                    />
                   ) : (
                     <MapPin
                       size={16}
@@ -590,14 +882,20 @@ export default function MapView() {
           <div className="flex items-center justify-between px-5 pb-2">
             <p className="text-[13px] font-semibold text-[#2d2d2d]">
               {activeFilter === "semua"
-                ? "Fasilitas Pengumpulan Terpilah"
+                ? "Semua Titik di Peta"
                 : activeFilter === "laporan"
-                  ? "Laporan Sampah Liar"
-                  : filters.find((f) => f.key === activeFilter)?.label}
+                ? "Titik Sampah Sembarangan"
+                : activeFilter === "tpsdesa"
+                ? "TPS Resmi Per Desa"
+                : filters.find((f) => f.key === activeFilter)?.label}
               <span className="ml-1.5 text-[11px] font-normal text-[#aaa]">
                 (
                 {activeFilter === "laporan"
                   ? filteredReports.length
+                  : activeFilter === "tpsdesa"
+                  ? filteredTpsDesa.length
+                  : activeFilter === "semua"
+                  ? filtered.length + filteredTpsDesa.length + filteredReports.length
                   : filtered.length}
                 )
               </span>
@@ -614,7 +912,7 @@ export default function MapView() {
                 <div className="flex flex-col items-center justify-center pt-6 text-center">
                   <AlertTriangle size={28} className="text-[#ccc]" />
                   <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
-                    Belum ada laporan sampah liar
+                    Belum ada data sampah liar
                   </p>
                   <p className="text-[11px] text-[#ccc] mt-1">
                     Tekan tombol merah di peta untuk melapor
@@ -643,12 +941,54 @@ export default function MapView() {
                       </p>
                     </div>
                     <span className="rounded-full px-2.5 py-1 text-[9px] font-semibold flex-shrink-0 bg-[#fff0f0] text-[#e03535]">
-                      Sampah Liar
+                      {r.isPreloaded ? "Terverifikasi" : "Sampah Liar"}
                     </span>
                   </button>
                 ))
               )
-            ) : filtered.length === 0 ? (
+            ) : isTpsDesaFilter ? (
+              filteredTpsDesa.length === 0 ? (
+                <div className="flex flex-col items-center justify-center pt-8 text-center">
+                  <Trash2 size={28} className="text-[#ccc]" />
+                  <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
+                    Tidak ada TPS Desa ditemukan
+                  </p>
+                </div>
+              ) : (
+                filteredTpsDesa.map((point) => (
+                  <button
+                    key={point.id}
+                    onClick={() => flyToPoint(point)}
+                    className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
+                      selectedPoint?.id === point.id
+                        ? "bg-[#f3eeff]"
+                        : "bg-[#fafafa] active:bg-[#f5f5f5]"
+                    }`}
+                  >
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0"
+                      style={{ backgroundColor: "#7c3aed20" }}
+                    >
+                      <Trash2 size={15} style={{ color: "#7c3aed" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">
+                        {point.name}
+                      </p>
+                      <p className="text-[10px] text-[#999] mt-0.5 truncate">
+                        {point.meta}
+                      </p>
+                    </div>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[9px] font-semibold flex-shrink-0"
+                      style={{ backgroundColor: "#7c3aed18", color: "#7c3aed" }}
+                    >
+                      TPS Desa
+                    </span>
+                  </button>
+                ))
+              )
+            ) : filtered.length === 0 && (activeFilter !== "semua" || filteredTpsDesa.length === 0) ? (
               <div className="flex flex-col items-center justify-center pt-8 text-center">
                 <MapPin size={28} className="text-[#ccc]" />
                 <p className="mt-2 text-[13px] font-semibold text-[#aaa]">
@@ -656,13 +996,13 @@ export default function MapView() {
                 </p>
               </div>
             ) : (
-              filtered.map((point) => (
+              [...filtered, ...(activeFilter === "semua" ? filteredTpsDesa : [])].map((point) => (
                 <button
                   key={point.id}
                   onClick={() => flyToPoint(point)}
                   className={`w-full flex items-center gap-3 rounded-[16px] px-3 py-3 mb-1.5 text-left transition-colors ${
                     selectedPoint?.id === point.id
-                      ? "bg-[#f0faf3]"
+                      ? point.type === "tpsdesa" ? "bg-[#f3eeff]" : "bg-[#f0faf3]"
                       : "bg-[#fafafa] active:bg-[#f0f0f0]"
                   }`}
                 >
@@ -670,7 +1010,11 @@ export default function MapView() {
                     className="flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0"
                     style={{ backgroundColor: point.badgeColor + "20" }}
                   >
-                    <MapPin size={15} style={{ color: point.badgeColor }} />
+                    {point.type === "tpsdesa" ? (
+                      <Trash2 size={15} style={{ color: point.badgeColor }} />
+                    ) : (
+                      <MapPin size={15} style={{ color: point.badgeColor }} />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-[#2d2d2d] truncate">
@@ -710,7 +1054,7 @@ export default function MapView() {
               <div className="flex items-center gap-2 mb-4">
                 <AlertTriangle size={16} className="text-[#e03535]" />
                 <h3 className="text-[15px] font-bold text-[#2d2d2d]">
-                  Lapor Sampah numpuk
+                  Lapor Sampah Buang Sembarangan
                 </h3>
               </div>
 
