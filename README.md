@@ -1,147 +1,125 @@
+<div align="center">
+
 # UPTERRA
 
-An eco-tech waste management app: report waste, identify e-waste with an AI camera scan, and trade recyclables through a built-in marketplace.
+**Turn household and electronic waste into something worth keeping.**
 
-Live at **[upterra.vercel.app](https://upterra.vercel.app)**
+Report illegal dumping, identify e-waste by pointing a camera at it, and resell the parts that still have value.
 
-<img src="screenshot.png" alt="UPTERRA onboarding screen" width="360">
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Gemini](https://img.shields.io/badge/Gemini_Live_API-8E75B2?logo=googlegemini&logoColor=white)](https://ai.google.dev)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?logo=vercel&logoColor=white)](https://upterra.vercel.app)
+
+### [Open the live app →](https://upterra.vercel.app)
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/onboarding-1.png" alt="Onboarding: identifying household and electronic waste with a camera scan"/></td>
+<td width="50%"><img src="docs/screenshots/onboarding-3.png" alt="Onboarding: reselling usable components through the built-in marketplace"/></td>
+</tr>
+</table>
+
+</div>
+
+## Overview
+
+Most people know electronics should not go in the bin, and stop there. UPTERRA closes that gap: it tells you what an item actually is, whether it is hazardous, and what to do with it next — compost it, drop it at a collection point, or list it for sale.
+
+Built as a team project for a mobile-first Indonesian audience.
 
 ## Features
 
 ### Waste reporting
-Report illegal dumping or a full collection point from the app, track the status of everything you have submitted, and confirm once it has been handled. Locations are shown on an interactive map.
+
+Submit a report for illegal dumping or a full collection point, follow its status through to resolution, and see every report on an interactive map.
 
 ### AI scan
-Point the camera at an item and the app identifies what kind of e-waste it is, then explains how to handle it safely. Two modes are available:
 
-- **Live scan** streams camera frames to the Gemini Live API and returns structured detection results with a confidence score.
-- **Video call** is a full-screen conversational mode with microphone input, spoken responses, a live transcript, and an animated AI visualiser.
+Point the camera at an item and Gemini identifies it, classifies it as organic, inorganic, or e-waste, flags hazardous material, and explains how to handle it. Two modes share the same pipeline:
 
-Both fall back gracefully and reconnect on their own if the connection drops.
+| Mode | What it does |
+|---|---|
+| **Live scan** | Streams camera frames and returns structured detections with a confidence score |
+| **Video call** | Full-screen conversational mode with microphone input, spoken replies, a running transcript, and an audio visualiser |
+
+Detections come back as JSON, so the result feeds straight into the marketplace and disposal guidance rather than being a wall of text.
 
 ### Marketplace
-Browse recyclable goods from merchants, open a product chat, add items to a cart, and track orders.
+
+Browse recyclable goods from merchants, open a product chat, build a cart, and track orders.
 
 ### Dashboard
-Waste statistics, a recent-activity feed, and a map view of reports.
+
+Waste statistics, a recent-activity feed, and a map overview of reports.
 
 ## Tech stack
 
-- **React 19** with **Vite**
-- **Tailwind CSS v4**
-- **Motion** (Framer Motion) for transitions and interactions
-- **Zustand** for state (auth, cart, orders, waste)
-- **React Router 7**
-- **Lucide** icons
-- **Gemini Live API** over WebSocket, with a REST fallback
+| Layer | Choice |
+|---|---|
+| UI | React 19, React Router 7 |
+| Build | Vite 8 |
+| Styling | Tailwind CSS v4, Motion for transitions |
+| State | Zustand (auth, cart, orders, waste) |
+| AI | Gemini Live API over WebSocket, brokered by a serverless function |
+| Icons | Lucide |
+| Hosting | Vercel |
+
+## Getting started
+
+Requires **Node.js 22**. The version is pinned in `engines` so local and deployed builds agree.
+
+```bash
+npm install
+cp .env.example .env      # then add your GEMINI_API_KEY
+npm run dev
+```
+
+Open the **Scan** section to try the camera or video-call mode.
+
+```bash
+npm run build             # production build
+npm run preview           # serve that build locally
+npm run lint              # eslint
+```
+
+## Configuration
+
+The app needs one variable, `GEMINI_API_KEY`, and it is read **only on the server**. The browser never receives it: it asks `/api/gemini-token` for a single-use ephemeral token and opens its Gemini session with that.
+
+Note the missing `VITE_` prefix — that is deliberate, since Vite inlines any `VITE_*` value into the client bundle.
+
+Full detail, including deployment steps and troubleshooting, is in **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**.
 
 ## Project structure
 
 ```
+api/
+└── gemini-token.js       # mints short-lived Gemini tokens, server side
 src/
 ├── components/
-│   ├── common/          # Button, Card, Modal, Toast, Spinner, ...
-│   ├── dashboard/       # StatCard, WasteChart, MapView, RecentActivity
-│   ├── layout/          # Navbar, Sidebar, BottomNav, ProtectedRoute
-│   ├── scan/            # CameraView, ScanOverlay, DetectionResult
-│   ├── waste/           # WasteCard, WasteCategory, WasteList, WasteTip
+│   ├── common/           # Button, Card, Modal, Toast, Spinner, ...
+│   ├── dashboard/        # StatCard, WasteChart, MapView, RecentActivity
+│   ├── layout/           # Navbar, Sidebar, BottomNav, ProtectedRoute
+│   ├── scan/             # CameraView, ScanOverlay, DetectionResult
+│   ├── waste/            # WasteCard, WasteCategory, WasteList, WasteTip
 │   └── GeminiLiveVideoCall.jsx
-├── hooks/               # useAuth, useCamera, useGeminiLive, useLocation, ...
-├── pages/               # Onboarding, Login, Home, Dashboard, Scan, Market, ...
-├── services/            # api, authService, geminiLive, locationService, ...
-├── store/               # Zustand stores
-├── styles/              # tokens, base, components, app, scan
-└── utils/               # constants, formatters, helpers, validators
+├── hooks/                # useAuth, useCamera, useGeminiLive, useLocation, ...
+├── pages/                # Onboarding, Login, Home, Dashboard, Scan, Market, ...
+├── services/             # api, authService, geminiLive, locationService, ...
+├── store/                # Zustand stores
+├── styles/               # tokens, base, components, app, scan
+└── utils/                # constants, formatters, helpers, validators
 ```
 
-## Requirements
+## Documentation
 
-Node.js 22, and a Gemini API key. The version is pinned in `engines` so local and deployed builds agree.
+| Document | Contents |
+|---|---|
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Environment variables, credential flow, deployment, troubleshooting |
+| [docs/GEMINI_LIVE_VIDEO_CALL.md](docs/GEMINI_LIVE_VIDEO_CALL.md) | Gemini Live architecture, usage examples, error handling |
 
-## Running it locally
+## Team
 
-```bash
-npm install
-cp .env.example .env
-```
-
-Put your key in `.env`:
-
-```
-GEMINI_API_KEY=your_key_here
-```
-
-Note the name: **no `VITE_` prefix**. That is deliberate, and the next section explains why it matters.
-
-Then start the dev server:
-
-```bash
-npm run dev
-```
-
-Open the **Scan** section to try the AI scan or the video call mode.
-
-To build for production:
-
-```bash
-npm run build
-```
-
-## How the API key is handled
-
-The key never reaches the browser.
-
-**Anything prefixed `VITE_` is baked into the client bundle at build time.** That is Vite's documented behaviour, not a bug. An earlier version of this app read `VITE_GEMINI_API_KEY` in the browser and opened its Live API WebSocket with `?key=<the key>`, which meant the key shipped inside the JavaScript every visitor downloads.
-
-Being on the Gemini free tier does not change that. An exposed key still lets strangers spend your quota, the requests still count against your Google account, and if billing is ever enabled on the project they become chargeable. Google also scans for leaked keys and can disable one without warning, which takes the app down with it.
-
-### What it does now
-
-The key lives only in the server environment. The browser asks for a short-lived [ephemeral token](https://ai.google.dev/gemini-api/docs/ephemeral-tokens) and connects with that instead:
-
-```
-Browser ──POST /api/gemini-token──►  server        (holds GEMINI_API_KEY)
-                                       │
-                                       ▼
-                             Gemini auth_tokens
-                                       │
-Browser ◄────── single-use token ──────┘
-
-Browser ──wss://…?access_token=<token>──► Gemini Live API
-```
-
-- [`api/gemini-token.js`](api/gemini-token.js) reads `GEMINI_API_KEY` and mints a token that is **good for one use**, may start a session within **60 seconds**, and expires after **30 minutes**.
-- [`src/services/geminiLive.js`](src/services/geminiLive.js) takes a `getToken` function instead of a key and connects with `?access_token=`.
-- [`src/hooks/useGeminiLive.js`](src/hooks/useGeminiLive.js) fetches a fresh token immediately before each session.
-
-Because `vite dev` does not run the functions in `api/`, `vite.config.js` serves that same handler through Vite middleware so `npm run dev` behaves like production.
-
-You can confirm the key is gone from a build:
-
-```bash
-npm run build
-grep -o "access_token=" dist/assets/*.js   # present
-grep -c "AIza" dist/assets/*.js            # 0
-```
-
-### Deployment
-
-Set `GEMINI_API_KEY` as an environment variable on the host, then redeploy. Do not add a `VITE_` prefix to it, and do not log it. Even with this setup it is worth restricting the key to the Generative Language API in the Google Cloud console, and leaving billing disabled so the worst case is an exhausted free quota.
-
-Remember to **delete any old `VITE_GEMINI_API_KEY`** variable. If it is still set, nothing breaks, but the old key gets inlined into every new build again.
-
-### If the token endpoint returns 502
-
-Check the function logs. The usual cause is the **key format**.
-
-Google AI Studio now issues some keys with an `AQ.` prefix instead of the older `AIzaSy` one, and `AQ.` keys are widely reported to fail against `generativelanguage.googleapis.com` with `API key not valid` — which is exactly the host `api/gemini-token.js` calls. A key can work for a direct Live API WebSocket and still be rejected here, so "it used to work" is not a reliable signal.
-
-If that is what you are hitting, create the key from the Google Cloud console instead of AI Studio:
-
-1. [Enable the Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) on the project.
-2. Create an API key under [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials). Those come out in `AIzaSy` form.
-3. Restrict it to the Generative Language API.
-
-## Further reading
-
-`docs/GEMINI_LIVE_VIDEO_CALL.md` covers the Gemini Live architecture, usage examples, and error handling in detail.
+Built by [@OnlyOneArthur](https://github.com/OnlyOneArthur) and [@GianneAngely](https://github.com/GianneAngely).
