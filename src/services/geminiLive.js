@@ -131,13 +131,20 @@ export function createGeminiLiveClient({
     };
 
     ws.onclose = (event) => {
+      // Keep the raw upstream reason in the console for debugging, but never put
+      // it in the UI. Google's messages are long, English, and internal-looking.
       console.info("[GeminiLive] WebSocket closed", "code=", event.code, "reason=", event.reason || "(no reason)");
-      if (!event.wasClean && event.reason) {
-        try {
-          const e = JSON.parse(event.reason);
-          onError?.(`Gemini Live: ${e?.error?.message || event.reason}`);
-        } catch { onError?.(`Gemini Live closed (${event.code}): ${event.reason}`); }
+
+      if (!event.wasClean) {
+        // 1008 is what the server sends when it will not accept our credentials.
+        const isAuth = event.code === 1008 || /unregistered callers|API key|credential/i.test(event.reason || "");
+        onError?.(
+          isAuth
+            ? "Fitur AI sedang tidak tersedia. Coba lagi nanti."
+            : "Koneksi ke AI terputus. Coba mulai ulang sesi."
+        );
       }
+
       open = false; ws = null;
       onClose?.();
     };
