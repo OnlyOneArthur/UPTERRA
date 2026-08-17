@@ -1,7 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createGeminiLiveClient } from "../services/geminiLive";
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+// The API key stays on the server. This asks it for a single-use ephemeral
+// token right before each connection. See api/gemini-token.js
+const TOKEN_ENDPOINT = "/api/gemini-token";
+
+async function fetchEphemeralToken() {
+  const res = await fetch(TOKEN_ENDPOINT, { method: "POST" });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.error || `Token endpoint returned ${res.status}`);
+  }
+  const { token } = await res.json();
+  return token;
+}
 
 const SYSTEM_PROMPT = `Kamu adalah UPTERRA AI, asisten cerdas untuk identifikasi dan pengelolaan sampah — mencakup sampah elektronik (e-waste), sampah anorganik, dan sampah organik.
 
@@ -343,11 +355,6 @@ export function useGeminiLive() {
     stopMicStream();
     stopPlayback();
 
-    if (!GEMINI_API_KEY) {
-      setError("VITE_GEMINI_API_KEY tidak ditemukan.");
-      setStatus("error");
-      return;
-    }
 
     setStatus("connecting");
     setError(null);
@@ -361,7 +368,7 @@ export function useGeminiLive() {
     frameLoopActiveRef.current = false;
 
     const client = createGeminiLiveClient({
-      apiKey: GEMINI_API_KEY,
+      getToken: fetchEphemeralToken,
       systemInstruction: SYSTEM_PROMPT,
       onText: handleTextChunk,
       onTranscript: handleTranscript,

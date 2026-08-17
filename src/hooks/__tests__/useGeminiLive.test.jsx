@@ -57,7 +57,8 @@ describe('useGeminiLive', () => {
   });
 
   it('should handle startSession when API key present', () => {
-    // Note: In real env test, set import.meta.env.VITE_GEMINI_API_KEY
+    // The hook now fetches an ephemeral token from /api/gemini-token, so there
+    // is no client-side key to set. Stub global.fetch to exercise the real path.
     const { result } = renderHook(() => useGeminiLive());
     act(() => {
       result.current.startSession();

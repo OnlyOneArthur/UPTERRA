@@ -56,7 +56,7 @@ src/
 
 ## Requirements
 
-Node.js 18 or newer, and a Gemini API key.
+Node.js 22, and a Gemini API key. The version is pinned in `engines` so local and deployed builds agree.
 
 ## Running it locally
 
@@ -68,8 +68,10 @@ cp .env.example .env
 Put your key in `.env`:
 
 ```
-VITE_GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
 ```
+
+Note the name: **no `VITE_` prefix**. That is deliberate, and the next section explains why it matters.
 
 Then start the dev server:
 
@@ -85,33 +87,46 @@ To build for production:
 npm run build
 ```
 
-## About the API key
+## How the API key is handled
 
-This is worth reading before you deploy your own copy.
+The key never reaches the browser.
 
-**Anything prefixed `VITE_` is baked into the client bundle at build time.** That is Vite's documented behaviour, not a bug. It means `VITE_GEMINI_API_KEY` ships inside the JavaScript that browsers download, so anyone who opens DevTools on a deployed build can read it. Keeping it in `.env` protects it from git, not from visitors.
+**Anything prefixed `VITE_` is baked into the client bundle at build time.** That is Vite's documented behaviour, not a bug. An earlier version of this app read `VITE_GEMINI_API_KEY` in the browser and opened its Live API WebSocket with `?key=<the key>`, which meant the key shipped inside the JavaScript every visitor downloads. Keeping it in `.env` protected it from git, not from anyone who opened DevTools.
 
-Being on the Gemini free tier does not change this. A leaked key still lets strangers spend your quota, requests still count against your Google account, and if billing is ever enabled on that project the usage becomes chargeable. Google also scans for exposed keys and may disable one without warning, which takes the app down with it.
+Being on the Gemini free tier does not change that. An exposed key still lets strangers spend your quota, the requests still count against your Google account, and if billing is ever enabled on the project they become chargeable. Google also scans for leaked keys and can disable one without warning, which takes the app down with it.
 
-### Recommended setup
+### What it does now
 
-Move the Gemini call server-side. On Vercel that is a small change: add an API route under `api/` that holds the key as a normal (non-`VITE_`) environment variable and forwards requests to Gemini, then point the client at your own route instead of at Google.
+The key lives only in the server environment. The browser asks for a short-lived [ephemeral token](https://ai.google.dev/gemini-api/docs/ephemeral-tokens) and connects with that instead:
 
 ```
-Browser  ──►  /api/gemini  ──►  Gemini API
-              (key lives here, never sent to the browser)
+Browser ──POST /api/gemini-token──►  server        (holds GEMINI_API_KEY)
+                                       │
+                                       ▼
+                             Gemini auth_tokens
+                                       │
+Browser ◄────── single-use token ──────┘
+
+Browser ──wss://…?access_token=<token>──► Gemini Live API
 ```
 
-The Live API's WebSocket streaming needs a proxy rather than a plain fetch route, so the simplest split is: run the low-frequency REST calls through your own route, and use short-lived [ephemeral tokens](https://ai.google.dev/gemini-api/docs/ephemeral-tokens) for the Live session so the client never holds the long-lived key.
+- [`api/gemini-token.js`](api/gemini-token.js) reads `GEMINI_API_KEY` and mints a token that is **good for one use**, may start a session within **60 seconds**, and expires after **30 minutes**.
+- [`src/services/geminiLive.js`](src/services/geminiLive.js) takes a `getToken` function instead of a key and connects with `?access_token=`.
+- [`src/hooks/useGeminiLive.js`](src/hooks/useGeminiLive.js) fetches a fresh token immediately before each session.
 
-### If you are keeping it client-side for a demo
+Because `vite dev` does not run the functions in `api/`, `vite.config.js` serves that same handler through Vite middleware so `npm run dev` behaves like production.
 
-That is a defensible trade-off for a student project, as long as it is a deliberate one:
+You can confirm the key is gone from a build:
 
-- Use a **dedicated key** for this app, never a personal or shared one.
-- Leave **billing disabled** on the project, so the worst case is an exhausted free quota rather than a bill.
-- **Restrict the key** to the Generative Language API only, in Google Cloud console.
-- **Rotate it** whenever the repo changes hands or is made public.
+```bash
+npm run build
+grep -o "access_token=" dist/assets/*.js   # present
+grep -c "AIza" dist/assets/*.js            # 0
+```
+
+### Deployment
+
+Set `GEMINI_API_KEY` as an environment variable on the host, then redeploy. Do not add a `VITE_` prefix to it, and do not log it. Even with this setup it is worth restricting the key to the Generative Language API in the Google Cloud console, and leaving billing disabled so the worst case is an exhausted free quota.
 
 ### If a key has already been committed
 

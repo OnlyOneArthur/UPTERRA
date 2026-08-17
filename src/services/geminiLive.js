@@ -24,7 +24,9 @@ async function parseMessage(data) {
 }
 
 export function createGeminiLiveClient({
-  apiKey,
+  // Returns a short-lived ephemeral token. The raw API key never reaches the
+  // browser: the server mints a single-use token instead. See api/gemini-token.js
+  getToken,
   systemInstruction = "",
   onText,
   onTranscript,
@@ -36,12 +38,29 @@ export function createGeminiLiveClient({
 }) {
   let ws = null;
   let open = false;
+  let disposed = false;
 
-  const connect = () => {
-    if (!apiKey) { onError?.("Gemini API key belum di-set."); return; }
+  const connect = async () => {
+    if (typeof getToken !== "function") {
+      onError?.("Gemini token provider belum di-set.");
+      return;
+    }
+
+    let token;
+    try {
+      token = await getToken();
+    } catch (err) {
+      console.error("[GeminiLive] Could not obtain an ephemeral token", err);
+      onError?.("Gagal mengambil token Gemini. Coba lagi.");
+      return;
+    }
+    if (!token) { onError?.("Token Gemini kosong."); return; }
+
+    // disconnect() may have run while the token request was in flight.
+    if (disposed) return;
 
     console.info("[GeminiLive] Connecting...");
-    ws = new WebSocket(`${WS_BASE}?key=${encodeURIComponent(apiKey)}`);
+    ws = new WebSocket(`${WS_BASE}?access_token=${encodeURIComponent(token)}`);
 
     ws.onopen = () => {
       const setupMessage = {
@@ -125,6 +144,9 @@ export function createGeminiLiveClient({
   };
 
   const disconnect = () => {
+    // Set before closing so an in-flight connect() bails out instead of opening
+    // a socket nobody is listening to.
+    disposed = true;
     try { ws?.close(1000, "client-close"); } catch {}
     ws = null; open = false;
   };

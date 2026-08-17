@@ -8,5 +8,3 @@ createRoot(document.getElementById("root")).render(
     <App />
   </StrictMode>,
 );
-
-console.log("Gemini key:", import.meta.env.VITE_GEMINI_API_KEY);
