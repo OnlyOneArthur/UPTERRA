@@ -142,10 +142,6 @@ If that is what you are hitting, create the key from the Google Cloud console in
 2. Create an API key under [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials). Those come out in `AIzaSy` form.
 3. Restrict it to the Generative Language API.
 
-### If a key has already been committed
-
-Rotate it. Deleting the file in a later commit does not help, because the value stays in the repository history and in every clone anyone has already made. Rewriting history is optional cleanup; reissuing the key is the part that actually closes the hole.
-
 ## Further reading
 
 `docs/GEMINI_LIVE_VIDEO_CALL.md` covers the Gemini Live architecture, usage examples, and error handling in detail.
