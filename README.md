@@ -119,7 +119,3 @@ src/
 |---|---|
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Environment variables, credential flow, deployment, troubleshooting |
 | [docs/GEMINI_LIVE_VIDEO_CALL.md](docs/GEMINI_LIVE_VIDEO_CALL.md) | Gemini Live architecture, usage examples, error handling |
-
-## Team
-
-Built by [@OnlyOneArthur](https://github.com/OnlyOneArthur) and [@GianneAngely](https://github.com/GianneAngely).
