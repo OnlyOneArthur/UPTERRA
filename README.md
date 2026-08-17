@@ -128,6 +128,20 @@ grep -c "AIza" dist/assets/*.js            # 0
 
 Set `GEMINI_API_KEY` as an environment variable on the host, then redeploy. Do not add a `VITE_` prefix to it, and do not log it. Even with this setup it is worth restricting the key to the Generative Language API in the Google Cloud console, and leaving billing disabled so the worst case is an exhausted free quota.
 
+Remember to **delete any old `VITE_GEMINI_API_KEY`** variable. If it is still set, nothing breaks, but the old key gets inlined into every new build again.
+
+### If the token endpoint returns 502
+
+Check the function logs. The usual cause is the **key format**.
+
+Google AI Studio now issues some keys with an `AQ.` prefix instead of the older `AIzaSy` one, and `AQ.` keys are widely reported to fail against `generativelanguage.googleapis.com` with `API key not valid` — which is exactly the host `api/gemini-token.js` calls. A key can work for a direct Live API WebSocket and still be rejected here, so "it used to work" is not a reliable signal.
+
+If that is what you are hitting, create the key from the Google Cloud console instead of AI Studio:
+
+1. [Enable the Generative Language API](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com) on the project.
+2. Create an API key under [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials). Those come out in `AIzaSy` form.
+3. Restrict it to the Generative Language API.
+
 ### If a key has already been committed
 
 Rotate it. Deleting the file in a later commit does not help, because the value stays in the repository history and in every clone anyone has already made. Rewriting history is optional cleanup; reissuing the key is the part that actually closes the hole.
