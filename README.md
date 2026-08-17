@@ -87,6 +87,26 @@ To build for production:
 npm run build
 ```
 
+## A note on the git history
+
+If you dig through old commits you will find a `.env` file with an API key in it. We know. Here is the honest version, because we would rather explain it than have you guess.
+
+It was committed early on, while this was a fast-moving student team project. Once we noticed, we did not just delete the file and move on, which is the usual quick fix and leaves the same hole open:
+
+1. **The exposed credentials are treated as compromised and replaced.** Anything you can still read in the history is a dead key.
+2. **The commits are no longer reachable from any branch.** They only resolve if you already know the exact commit id.
+3. **The app stopped keeping a key in the browser at all.** This is the part that actually matters. The ephemeral-token setup described below was built specifically so that this mistake cannot repeat, no matter who touches the project next.
+
+Point 3 is worth checking rather than trusting. Build the app and search the output:
+
+```bash
+npm run build
+grep -c "AIza\|AQ\." dist/assets/*.js    # 0
+grep -o "/api/gemini-token" dist/assets/*.js
+```
+
+The old design shipped the key inside that bundle to every visitor. The current one does not ship a key at all.
+
 ## How the API key is handled
 
 The key never reaches the browser.
