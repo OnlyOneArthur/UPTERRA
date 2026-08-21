@@ -1,8 +1,14 @@
 // ─── Gemini Live WebSocket Client ────────────────────────────────────────────
 // Ref: https://ai.google.dev/api/live#BidiGenerateContentSetup
-
+//
+// We authenticate with an ephemeral token (see api/gemini-token.js), NOT a raw
+// API key. Ephemeral tokens are only accepted on the *Constrained* method, on
+// v1alpha. Connecting to the plain BidiGenerateContent method (the API-key one)
+// with a token is rejected mid-setup with close code 1008 "Method doesn't allow
+// unregistered callers", which is why the scan looked dead. The token carries no
+// baked-in constraints, so the full setup below is still sent from the client.
 const WS_BASE =
-  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+  "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained";
 
 const MODEL_ID = "gemini-3.1-flash-live-preview";
 
